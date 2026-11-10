@@ -1,0 +1,40 @@
+{
+    "source": "Yahoo Finance",
+    "download_timestamp": "2026-10-21T04:17:48.150541",
+    "start_date_requested": "2010-01-01",
+    "end_date_exclusive": "2026-10-21",
+    "interval": "1d",
+    "price_field": "Close",
+    "auto_adjust": false,
+    "tickers": {
+        "WTI": "CL=F",
+        "VIX": "^VIX",
+        "DXY": "DX-Y.NYB",
+        "GOLD": "GC=F",
+        "TNX": "^TNX",
+        "SP500": "^GSPC",
+        "NG": "NG=F"
+    },
+    "columns": [
+        "WTI",
+        "VIX",
+        "DXY",
+        "GOLD",
+        "TNX",
+        "SP500",
+        "NG"
+    ],
+    "rows": 4232,
+    "first_observation": "2010-01-04",
+    "last_observation": "2026-10-20",
+    "missing_values_by_column": {
+        "WTI": 7,
+        "VIX": 5,
+        "DXY": 6,
+        "GOLD": 7,
+        "TNX": 9,
+        "SP500": 7,
+        "NG": 6
+    },
+    "note": "Datos originales descargados. No se han imputado faltantes ni calculado retornos."
+}
