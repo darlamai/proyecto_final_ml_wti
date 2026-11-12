@@ -37,10 +37,10 @@ Dependencias externas
 
 """
 
-
 import pandas as pd
 
 from . import config as cfg
+
 
 def load_raw(ruta=None):
     """

@@ -1,6 +1,6 @@
 {
     "source": "Yahoo Finance",
-    "download_timestamp": "2026-11-11T07:56:40.006178",
+    "download_timestamp": "2026-11-12T11:59:07.823441",
     "start_date_requested": "2010-01-01",
     "end_date_exclusive": "2026-10-31",
     "interval": "1d",
