@@ -17,20 +17,14 @@ import yfinance as yf
 
 start_date = "2010-01-01"
 
-# Yahoo Finance considera end_date como fecha exclusiva y se utiliza la fecha actual de ejecución como límite.
-end_date = datetime.now().strftime("%Y-%m-%d")
+# Se fija como última fecha de descarga el último día del mes de Octubre 2026.
+end_date = datetime(2026, 10, 31).strftime("%Y-%m-%d")
 
 parameters = {
     "WTI": "CL=F",# precio del petróleo crudo de referencia de Estados Unidos WTI
-    "VIX": "^VIX",# indicador de  volatilidad del mercado de  opciones del S&P 500 (inversores esperan que el mercado sea más volátil en el futuro- próximos 30 días)
-    "DXY": "DX-Y.NYB", # índice del dólar estadounidense (DXY) mide el valor del dólar frente a una cesta de seis monedas extranjeras principales
-    "GOLD": "GC=F", # precio futuro del oro y se expresa en dólares por onza troy
-    "TNX": "^TNX", # rendimiento del bono del Tesoro de EE.UU, mide la tasa de interés del bono del Tesoro a 10 años, que es un indicador clave de las tasas de interés a largo plazo en la economía estadounidense
-    "SP500": "^GSPC", # índice bursátil que representa el rendimiento de las 500 empresas más grandes que cotizan en bolsa en Estados Unidos
-    "NG": "NG=F",# precio futuro del gas natural
 }
 
-project_root = Path(__file__).resolve().parents[2]
+project_root = Path(__file__).resolve().parents[1]
 raw_dir = project_root / "data" / "raw"
 raw_dir.mkdir(parents=True, exist_ok=True)
 
@@ -43,7 +37,7 @@ raw_dir.mkdir(parents=True, exist_ok=True)
 
 def download_close_prices() -> pd.DataFrame:
 
-    """Descarga los cierres diarios de los activos seleccionados."""
+    """Descarga el cierre diario del precio del petróleo WTI."""
 
     downloaded = yf.download(
         tickers=list(parameters.values()),
@@ -89,12 +83,12 @@ def download_close_prices() -> pd.DataFrame:
     }
     close = close.rename(columns=rename_map)
 
-    # Comprobar que estén presentes las siete series.
+    # Comprobar que esté presente la serie WTI 
     missing_columns = set(parameters.keys()) - set(close.columns)
 
     if missing_columns:
         raise ValueError(
-            f"Faltan series en la descarga: {sorted(missing_columns)}"
+            f"Falta la serie WTI en la descarga: {sorted(missing_columns)}"
         )
 
     close = close[list(parameters.keys())].sort_index()
@@ -168,7 +162,4 @@ def main() -> None:
     print("\nValores faltantes por serie:")
     print(close.isna().sum())
 
-
-if __name__ == "__main__":
-    main()
 

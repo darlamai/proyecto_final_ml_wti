@@ -68,6 +68,16 @@ def load_raw(ruta=None):
         variables financieras definidas en cfg.columns.
     """    
     ruta = ruta or cfg.raw_csv
+    # Si la ruta es un directorio, buscar el CSV disponible
+    if ruta.is_dir():
+        archivos_csv = list(ruta.glob("*.csv"))
+
+        if not archivos_csv:
+            raise FileNotFoundError(
+                f"No se encontró ningún archivo CSV en {ruta}"
+            )
+
+        ruta = archivos_csv[0]  # toma el primer CSV encontrado
     base = pd.read_csv(ruta)
     base["Date"] = pd.to_datetime(base["Date"])
     base = base.set_index("Date").sort_index()
@@ -104,6 +114,58 @@ def summarize_missing_values(base):
         "cantidad": base.isna().sum(),
         "porcentaje": (base.isna().mean() * 100).round(2),
     }).sort_values("cantidad", ascending=False)
+
+
+def summarize_negative_values(base):
+    """
+    Calcula un resumen de los valores negativos presentes en cada columna
+    numérica de un DataFrame.
+
+    Para cada variable numérica, determina la cantidad de valores menores
+    que cero y su porcentaje respecto al total de filas. Las columnas no
+    numéricas se omiten. Los resultados se ordenan de mayor a menor según
+    la cantidad de valores negativos.
+
+    Parameters
+    ----------
+    base : pd.DataFrame
+        DataFrame que contiene las observaciones que se desean analizar.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame con las columnas ``cantidad`` y ``porcentaje``.
+    """
+    numericas = base.select_dtypes(include="number")
+    negativos = numericas.lt(0)
+    return pd.DataFrame({
+        "cantidad": negativos.sum(),
+        "porcentaje": (negativos.mean() * 100).round(2),
+    }).sort_values("cantidad", ascending=False)
+
+
+def rows_with_negative_values(base):
+    """
+    Identifica las filas que contienen valores negativos en columnas
+    numéricas de un DataFrame.
+
+    Una fila se incluye si al menos uno de sus valores numéricos es menor
+    que cero. Las columnas no numéricas no se consideran para la detección,
+    pero se conservan en las filas devueltas.
+
+    Parameters
+    ----------
+    base : pd.DataFrame
+        DataFrame que contiene las observaciones que se desean analizar.
+
+    Returns
+    -------
+    pd.DataFrame
+        Filas originales que contienen al menos un valor numérico negativo.
+    """
+    numericas = base.select_dtypes(include="number")
+    filas_negativas = numericas.lt(0).any(axis=1)
+    return base.loc[filas_negativas]
 
 
 def drop_missing_rows(base, umbral=None):

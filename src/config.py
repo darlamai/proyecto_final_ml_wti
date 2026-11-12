@@ -1,13 +1,12 @@
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
-raw_csv = root / "data" / "raw" / "wti_market_data_20261021.csv"
+raw_csv = root / "data" / "raw" 
 processed = root / "data" / "processed"
 
 
-target = "WTI"
-ex = ["VIX", "DXY", "GOLD", "TNX", "SP500", "NG"]
-columns = [target] + ex
+columns= ["WTI"]
+
 
 splits = {
     "train": ("2010-01-04", "2018-12-31"),
@@ -24,13 +23,7 @@ test_windows = {
 }
 
 transf = {
-    "WTI":   "logret",
-    "VIX":   "logret",
-    "DXY":   "logret",
-    "GOLD":  "logret",
-    "SP500": "logret",
-    "NG":    "logret",
-    "TNX":   "diff",     # tasa de interés: el cambio natural es en puntos
+    "WTI":   "logret"
 }
 threshold_null = 0.05      # se eliminan filas con nulos si el % medio de nulos es <= 5 %
 threshold_outlier_z = 5     # |z| > 5, con la desviación calculada solo en train

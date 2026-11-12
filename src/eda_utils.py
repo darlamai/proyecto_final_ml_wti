@@ -16,6 +16,21 @@ from . import config as cfg
 warnings.filterwarnings("ignore")
 
 
+
+
+def chequeo_calidad(base):
+    """Mínimo, valores <= 0, infinitos, nulos y precios repetidos (posible relleno) por serie."""
+    return pd.DataFrame({
+        "min": base.min(),
+        "n_<=0": (base <= 0).sum(),
+        "n_inf": np.isinf(base).sum(),
+        "n_nulos": base.isna().sum(),
+        "n_dias_sin_cambio": (base.diff() == 0).sum(),
+    })
+
+
+
+
 def unidad(c):
     return "puntos" if cfg.transf[c] == "diff" else "log-retorno"
 
@@ -38,15 +53,7 @@ def graficar_niveles_con_cortes(base, columnas=None, splits=None):
     plt.tight_layout(); plt.show()
 
 
-def chequeo_calidad(base):
-    """Mínimo, valores <= 0, infinitos, nulos y precios repetidos (posible relleno) por serie."""
-    return pd.DataFrame({
-        "min": base.min(),
-        "n_<=0": (base <= 0).sum(),
-        "n_inf": np.isinf(base).sum(),
-        "n_nulos": base.isna().sum(),
-        "n_dias_sin_cambio": (base.diff() == 0).sum(),
-    })
+
 
 
 def observaciones_por_anio(base):
