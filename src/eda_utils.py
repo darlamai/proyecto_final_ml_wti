@@ -31,8 +31,403 @@ def chequeo_calidad(base):
 
 
 
+def saltos_extremos(base, top=5):
+    """
+    Devuelve las mayores variaciones diarias por serie con fechas y precios.
+
+    Si ambos precios son positivos, calcula también el cambio logarítmico.
+    Si alguno es cero o negativo, no calcula el log y devuelve NaN en
+    ``log_var_abs``. El cambio absoluto y porcentual sí se calculan.
+    """
+    filas = []
+
+    for c in base.columns:
+        precio_actual = base[c]
+        precio_previo = precio_actual.shift(1)
+        cambio = precio_actual - precio_previo
+
+        cambio_log = pd.Series(np.nan, index=base.index, dtype=float)
+        pares_positivos = (precio_actual > 0) & (precio_previo > 0)
+        cambio_log.loc[pares_positivos] = (
+            np.log(precio_actual.loc[pares_positivos])
+            - np.log(precio_previo.loc[pares_positivos])
+        )
+
+        # Ordena por cambio logarítmico cuando está definido;
+        # los casos con cero o negativos se ordenan por cambio absoluto.
+        puntaje = cambio_log.abs().fillna(cambio.abs())
+        fechas = puntaje.nlargest(top).index
+
+        for fecha in fechas:
+            anterior = precio_previo.loc[fecha]
+            actual = precio_actual.loc[fecha]
+
+            if pd.isna(anterior) or pd.isna(actual):
+                continue
+
+            filas.append({
+                "serie": c,
+                "fecha_previa": base.index[base.index.get_loc(fecha) - 1].date(),
+                "fecha": fecha.date(),
+                "precio_previo": anterior,
+                "precio_actual": actual,
+                "cambio": actual - anterior,
+                "cambio_pct": (
+                    (actual / anterior - 1) * 100
+                    if anterior != 0 else np.nan
+                ),
+                "log_var_abs": abs(cambio_log.loc[fecha]),
+            })
+
+    return pd.DataFrame(filas).sort_values(
+        "log_var_abs",
+        ascending=False,
+        na_position="last",
+        ignore_index=True,
+    )
+
+
+def dias_sin_cambio(base):
+    """
+    Identifica las fechas en que una serie tiene el mismo valor
+    que en la observación anterior.
+
+    La comparación se realiza entre filas consecutivas del DataFrame,
+    que normalmente corresponden a sesiones de negociación consecutivas.
+
+    Parameters
+    ----------
+    base : pd.DataFrame
+        DataFrame con índice de fechas y una o más series numéricas.
+
+    Returns
+    -------
+    pd.DataFrame
+        Tabla con la serie, la fecha actual, la fecha previa
+        y el valor que se mantuvo sin cambio.
+    """
+    filas = []
+
+    for columna in base.columns:
+        sin_cambio = base[columna].eq(base[columna].shift(1))
+
+        for fecha in base.index[sin_cambio]:
+            posicion = base.index.get_loc(fecha)
+
+            filas.append({
+                "serie": columna,
+                "fecha_previa": base.index[posicion - 1].date(),
+                "fecha": fecha.date(),
+                "valor": base[columna].loc[fecha],
+            })
+
+    return pd.DataFrame(
+        filas,
+        columns=["serie", "fecha_previa", "fecha", "valor"],
+    )
+
+
+def top_movimientos_diarios(base, columna="WTI", top=10):
+    """
+    Devuelve los mayores movimientos diarios de una serie de precios.
+
+    El ranking usa el valor absoluto del retorno logarítmico, calculado
+    solo cuando el precio actual y el anterior son positivos. Los cambios
+    que involucran precios cero o negativos se devuelven en una tabla aparte.
+
+    Parameters
+    ----------
+    base : pd.DataFrame
+        DataFrame con índice de fechas y la serie de precios.
+    columna : str, default="WTI"
+        Nombre de la columna que se analizará.
+    top : int, default=10
+        Número de mayores movimientos logarítmicos que se mostrarán.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.DataFrame]
+        Tabla de mayores movimientos y tabla de cambios excluidos del log.
+    """
+    s = base[columna]
+    prev_close = s.shift(1)
+
+    # El retorno logarítmico requiere precios actual y previo positivos.
+    pares_positivos = s.gt(0) & prev_close.gt(0)
+    r = pd.Series(float("nan"), index=s.index, dtype=float)
+    r.loc[pares_positivos] = (
+        np.log(s.loc[pares_positivos] / prev_close.loc[pares_positivos]) * 100
+    )
+
+    # Retorno simple porcentual.
+    r_simple = (s / prev_close - 1) * 100
+
+    fechas_top = r.abs().nlargest(top).index
+    tabla_top = pd.DataFrame({
+        "día": fechas_top.day_name(),
+        "cierre_anterior": prev_close.loc[fechas_top],
+        "cierre": s.loc[fechas_top],
+        "retorno_log_%": r.loc[fechas_top],
+        "retorno_simple_%": r_simple.loc[fechas_top],
+    }).sort_index()
+
+    tabla_top.index = tabla_top.index.date
+
+    # Cambios que no admiten retorno logarítmico.
+    excluir_log = s.le(0) | prev_close.le(0)
+    fechas_excluidas = s.index[excluir_log]
+
+    tabla_excluidos = pd.DataFrame({
+        "cierre_anterior": prev_close.loc[fechas_excluidas],
+        "cierre": s.loc[fechas_excluidas],
+        "cambio_USD": (s - prev_close).loc[fechas_excluidas],
+        "retorno_simple_%": r_simple.loc[fechas_excluidas],
+    })
+    tabla_excluidos.index.name = "fecha"
+
+    return tabla_top.round(2), tabla_excluidos.round(2)
+
+
+def estadisticos_por_anio(px, c):
+    """Conteo, media, desviación, mínimo, mediana y máximo del nivel por año."""
+    return px[c].groupby(px.index.year).agg(["count", "mean", "std", "min", "median", "max"]).round(2)
+
+
+# ---- EDA descriptivo de los precios (usar SOLO con precios de train) ------------------
+def descriptivos_precios(px):
+    """Descriptivos de los niveles (precios) de cada serie."""
+    filas = []
+    for c in px.columns:
+        s = px[c]
+        filas.append({
+            "serie": c, "n": len(s), "media": s.mean(), "std": s.std(), "CV": s.std() / s.mean(),
+            "min": s.min(), "fecha_min": s.idxmin().date(),
+            "p25": s.quantile(0.25), "mediana": s.median(), "p75": s.quantile(0.75),
+            "max": s.max(), "fecha_max": s.idxmax().date(),
+            "asimetria": stats.skew(s), "curtosis_exceso": stats.kurtosis(s),
+        })
+    return pd.DataFrame(filas).set_index("serie")
+
+
+
+def graficar_serie_temporal(serie, nombre=None, unidad="Precio"):
+    """
+    Grafica una serie temporal.
+
+    Parameters
+    ----------
+    serie : pd.Series
+        Serie numérica con las fechas en el índice.
+    nombre : str, optional
+        Nombre para el título y la leyenda. Si no se indica, usa serie.name.
+    unidad : str, default="Precio"
+        Etiqueta del eje vertical.
+    """
+    nombre = nombre or serie.name or "Serie"
+
+    fig, ax = plt.subplots(figsize=(13, 4))
+    ax.plot(serie.index, serie.values, linewidth=0.8, label=nombre)
+    ax.set_title(f"Serie temporal de {nombre}")
+    ax.set_xlabel("Fecha")
+    ax.set_ylabel(unidad)
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    plt.show()
+
+
+def drop_nonpositive_rows(base, columns=None):
+    """
+    Elimina filas con valores menores o iguales a cero en columnas numéricas.
+
+    Parameters
+    ----------
+    base : pd.DataFrame
+        DataFrame que se desea limpiar.
+    columns : list[str], optional
+        Columnas que se revisarán. Si es None, revisa todas las numéricas.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, pd.DataFrame]
+        DataFrame limpio y filas eliminadas.
+    """
+    if columns is None:
+        columnas_revision = base.select_dtypes(include="number").columns
+    else:
+        columnas_revision = columns
+
+    mask_no_positivos = base[columnas_revision].le(0).any(axis=1)
+
+    base_limpia = base.loc[~mask_no_positivos].copy()
+    filas_eliminadas = base.loc[mask_no_positivos].copy()
+
+    return base_limpia, filas_eliminadas
+
+
+CANDIDATAS = {
+    "nivel":  lambda s: s,
+    "diff":   lambda s: s.diff(),
+    "logret": lambda s: np.log(s).diff(),
+}
+
 def unidad(c):
     return "puntos" if cfg.transf[c] == "diff" else "log-retorno"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########
+
+
+
+
+
 
 
 # =====================================================================================
@@ -60,34 +455,9 @@ def observaciones_por_anio(base):
     return base.groupby(base.index.year).size().rename("n_obs").to_frame()
 
 
-def saltos_extremos(base, top=5):
-    """
-    Mayores variaciones diarias en valor absoluto, para revisar a mano si son errores de datos
-    o cambios de contrato. Es una auditoría de calidad: NO se usa para decidir el diseño.
-    """
-    filas = []
-    for c in base.columns:
-        s = base[c].where(base[c] > 0)
-        v = np.log(s).diff().abs().nlargest(top)
-        for fecha, val in v.items():
-            filas.append({"serie": c, "fecha": fecha.date(), "|log-var|": round(val, 4)})
-    return pd.DataFrame(filas)
 
 
-# ---- EDA descriptivo de los precios (usar SOLO con precios de train) ------------------
-def descriptivos_precios(px):
-    """Descriptivos de los niveles (precios) de cada serie."""
-    filas = []
-    for c in px.columns:
-        s = px[c]
-        filas.append({
-            "serie": c, "n": len(s), "media": s.mean(), "std": s.std(), "CV": s.std() / s.mean(),
-            "min": s.min(), "fecha_min": s.idxmin().date(),
-            "p25": s.quantile(0.25), "mediana": s.median(), "p75": s.quantile(0.75),
-            "max": s.max(), "fecha_max": s.idxmax().date(),
-            "asimetria": stats.skew(s), "curtosis_exceso": stats.kurtosis(s),
-        })
-    return pd.DataFrame(filas).set_index("serie")
+
 
 
 def graficar_base100(px):
@@ -132,9 +502,7 @@ def graficar_boxplot_anual(px):
     plt.tight_layout(); plt.show()
 
 
-def estadisticos_por_anio(px, c):
-    """Conteo, media, desviación, mínimo, mediana y máximo del nivel por año."""
-    return px[c].groupby(px.index.year).agg(["count", "mean", "std", "min", "median", "max"]).round(2)
+
 
 
 def drawdown_maximo(s):
@@ -173,11 +541,6 @@ def graficar_correlacion_niveles(px):
     plt.tight_layout(); plt.show()
 
 
-CANDIDATAS = {
-    "nivel":  lambda s: s,
-    "diff":   lambda s: s.diff(),
-    "logret": lambda s: np.log(s).diff(),
-}
 
 
 def diagnostico_transformaciones(px):
