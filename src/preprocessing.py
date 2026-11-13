@@ -42,44 +42,66 @@ from . import config as cfg
 from . import load_clean 
 
 
-def build_returns(precios, transf=None):
-    """ 
-    Transformación de las variables según config.TRANSF: WTI-> logret,
-    VIX->logret, DXY->logret, GOLD->logret, SP500->logret, NG->logret, TNX->diff,  
-    Los precios <= 0 quedan en NaN en 'logret' (no se inventan valores).
+def build_returns(precios, transf=None, parkinson=None, escala=100.0):
+    """
+    Transforma la serie de precios del WTI en retornos logarítmicos (en %) y
+    calcula el estimador de volatilidad de Parkinson (en %²) a partir de los
+    precios máximo y mínimo del día. Los precios <= 0 quedan en NaN
+    (no se inventan valores).
 
     Parameters
     ----------
     precios : pd.DataFrame
-        DataFrame con las series históricas de precios. Su índice representa
-        las fechas y sus columnas los activos o variables financieras.
+        DataFrame indexado por fecha con el precio de cierre (WTI) y los
+        precios máximo (WTI_High) y mínimo (WTI_Low) de cada sesión.
 
     transf : dict, optional
-        Diccionario que especifica la transformación que se aplicará a cada
-        variable. Admite "logret" para retornos logarítmicos y "diff" para
-        primeras diferencias. Si es None o está vacío, utiliza cfg.transf.
+        Transformación de cada serie de precios. Admite "logret" (retornos
+        logarítmicos) y "diff" (primeras diferencias). Si es None, utiliza
+        cfg.transf, por ejemplo {"WTI": "logret"}.
+
+    parkinson : dict, optional
+        Diccionario {nombre_salida: (columna_high, columna_low)} para calcular
+        el estimador de Parkinson:
+            sigma2_P = (escala * ln(High / Low))**2 / (4 * ln 2)
+        Si es None, utiliza cfg.parkinson, por ejemplo
+        {"WTI_park": ("WTI_High", "WTI_Low")}.
+        Los días con High <= 0, Low <= 0 o High < Low quedan en NaN.
+
+    escala : float, default 100.0
+        Factor que multiplica el retorno logarítmico y el logaritmo del rango.
+        Con 100 los retornos quedan en % y Parkinson en %² (escala recomendada
+        para estimar el GARCH). Con 1.0 quedan en decimales.
 
     Returns
     -------
     pd.DataFrame
-        DataFrame con las series transformadas, conservando el índice
-        temporal y las columnas correspondientes a las variables procesadas.
-        Se elimina la primera observación porque no dispone de un valor
-        anterior para calcular la transformación.
-
+        DataFrame con el retorno del WTI (%) y el estimador de Parkinson (%²),
+        conservando el índice temporal. Se elimina la primera observación
+        porque no tiene un precio anterior para calcular el retorno.
     """
     transf = transf or cfg.transf
+    parkinson = parkinson if parkinson is not None else getattr(cfg, "parkinson", {})
     out = pd.DataFrame(index=precios.index)
+
+    # 1. Retornos logarítmicos en % (o diferencias)
     for c, t in transf.items():
         s = precios[c]
         if t == "logret":
-            out[c] = np.log(s.where(s > 0)).diff()
+            out[c] = escala * np.log(s.where(s > 0)).diff()
         elif t == "diff":
             out[c] = s.diff()
         else:
             raise ValueError(f"Transformación desconocida para {c}: {t}")
-    return out.iloc[1:]          
 
+    # 2. Estimador de volatilidad de Parkinson en %² (usa solo los precios del mismo día)
+    for nombre, (col_high, col_low) in parkinson.items():
+        high, low = precios[col_high], precios[col_low]
+        valido = (high > 0) & (low > 0) & (high >= low)
+        rango_log = escala * np.log(high.where(valido) / low.where(valido))
+        out[nombre] = rango_log**2 / (4 * np.log(2))
+
+    return out.iloc[1:]
 
 def prepare_and_save(ruta_raw=None, destino=None):
     """

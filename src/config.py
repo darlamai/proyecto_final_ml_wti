@@ -5,7 +5,7 @@ raw_csv = root / "data" / "raw"
 processed = root / "data" / "processed"
 
 
-columns= ["WTI"]
+columns= ["WTI","WTI_High", "WTI_Low"]
 
 DEV_INI, DEV_FIN   = "2010-01-01", "2024-12-31"
 TEST_INI, TEST_FIN = "2025-01-01", "2026-10-31"

@@ -1,22 +1,35 @@
 {
     "source": "Yahoo Finance",
-    "download_timestamp": "2026-11-13T05:07:51.533360",
+    "download_timestamp": "2026-11-13T14:02:48.770860",
     "start_date_requested": "2010-01-01",
     "end_date_exclusive": "2026-10-31",
     "interval": "1d",
-    "price_field": "Close",
+    "price_field": [
+        "Close",
+        "High",
+        "Low"
+    ],
+    "column_names": {
+        "Close": "WTI",
+        "High": "WTI_High",
+        "Low": "WTI_Low"
+    },
     "auto_adjust": false,
     "tickers": {
         "WTI": "CL=F"
     },
     "columns": [
-        "WTI"
+        "WTI",
+        "WTI_High",
+        "WTI_Low"
     ],
     "rows": 4233,
     "first_observation": "2010-01-04",
     "last_observation": "2026-10-30",
     "missing_values_by_column": {
-        "WTI": 0
+        "WTI": 0,
+        "WTI_High": 0,
+        "WTI_Low": 0
     },
     "note": "Datos originales descargados. No se han imputado faltantes ni calculado retornos."
 }

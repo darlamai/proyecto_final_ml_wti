@@ -70,15 +70,38 @@ def load_raw(ruta=None):
     ruta = ruta or cfg.raw_csv
     # Si la ruta es un directorio, buscar el CSV disponible
     if ruta.is_dir():
-        archivos_csv = list(ruta.glob("*.csv"))
+        archivos_csv = sorted(
+            ruta.glob("*.csv"),
+            key=lambda archivo: archivo.stat().st_mtime,
+            reverse=True,
+        )
 
         if not archivos_csv:
             raise FileNotFoundError(
                 f"No se encontró ningún archivo CSV en {ruta}"
             )
 
-        ruta = archivos_csv[0]  # toma el primer CSV encontrado
+        ruta_seleccionada = None
+        for archivo in archivos_csv:
+            columnas = pd.read_csv(archivo, nrows=0).columns
+            if set(cfg.columns).issubset(columnas):
+                ruta_seleccionada = archivo
+                break
+
+        if ruta_seleccionada is None:
+            raise ValueError(
+                f"Ningún CSV en {ruta} contiene las columnas requeridas: "
+                f"{cfg.columns}"
+            )
+
+        ruta = ruta_seleccionada
+
     base = pd.read_csv(ruta)
+    faltantes = [columna for columna in cfg.columns if columna not in base.columns]
+    if faltantes:
+        raise ValueError(
+            f"El archivo {ruta} no contiene las columnas requeridas: {faltantes}"
+        )
     base["Date"] = pd.to_datetime(base["Date"])
     base = base.set_index("Date").sort_index()
     return base[cfg.columns]
