@@ -682,403 +682,6 @@ def diagnostico_arch_lm(residuos_media, lags=10):
     return pd.DataFrame(filas).set_index("serie").round(4)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-########
-
-
-
-
-
-
-
-def graficar_medias_moviles(px, w1=63, w2=252):
-    """Cada serie con su media móvil trimestral (w1) y anual (w2): tendencias y cambios de régimen."""
-    cols = list(px.columns)
-    fig, axes = plt.subplots(len(cols), 1, figsize=(13, 2.3 * len(cols)), sharex=True)
-    for ax, c in zip(np.atleast_1d(axes), cols):
-        ax.plot(px[c], lw=0.5, color="0.6", label=c)
-        ax.plot(px[c].rolling(w1).mean(), lw=1.0, label=f"media {w1} d")
-        ax.plot(px[c].rolling(w2).mean(), lw=1.4, label=f"media {w2} d")
-        ax.set_ylabel(c); ax.grid(alpha=0.3); ax.legend(loc="upper left", ncol=3, fontsize=7)
-    plt.tight_layout(); plt.show()
-
-
-
-def tabla_estadisticos(ret, lags=10):
-    return pd.concat([estadisticos(ret[c], c, lags) for c in ret.columns], axis=1)
-
-
 def outliers_z(r, k=None):
     """Observaciones con |z| > k, con media y desviación de la propia serie que se pase (train)."""
     k = cfg.umbral_outlier_z if k is None else k
@@ -1089,249 +692,371 @@ def outliers_z(r, k=None):
 
 
 
-def graficar_panel(r, c, w1=21, w2=63):
-    """Panel 2×3: serie, histograma, QQ-plot vs t, desviación móvil, media móvil, apalancamiento."""
-    r = r.dropna()
-    mu, sd = r.mean(), r.std()
-    gl, loc_t, esc_t = stats.t.fit(r)
-    out = outliers_z(r)
-
-    fig, ax = plt.subplots(2, 3, figsize=(16, 8))
-    fig.suptitle(f"{c} ({unidad(c)}), train", fontsize=13)
-
-    ax[0, 0].plot(r, lw=0.5)
-    ax[0, 0].scatter(out.index, out, color="red", s=14, zorder=3, label=f"|z|>{cfg.umbral_outlier_z}: {len(out)}")
-    ax[0, 0].axhline(mu, color="k", ls="--", lw=0.7); ax[0, 0].legend()
-    ax[0, 0].set_title("Serie transformada")
-
-    ax[0, 1].hist(r, bins=80, density=True, alpha=0.6)
-    xs = np.linspace(r.min(), r.max(), 400)
-    ax[0, 1].plot(xs, stats.norm.pdf(xs, mu, sd), "r", label="Normal")
-    ax[0, 1].plot(xs, stats.t.pdf(xs, gl, loc_t, esc_t), "g", label=f"t (gl={gl:.1f})")
-    ax[0, 1].legend(); ax[0, 1].set_title(f"asim={stats.skew(r):.2f}  curt={stats.kurtosis(r):.2f}")
-
-    sm.qqplot(r, stats.t, distargs=(gl,), loc=loc_t, scale=esc_t, line="45", ax=ax[0, 2], markersize=2)
-    ax[0, 2].set_title("QQ-plot vs t")
-
-    ax[1, 0].plot(r.rolling(w1).std(), lw=0.8, label=f"{w1} d")
-    ax[1, 0].plot(r.rolling(w2).std(), lw=1.2, label=f"{w2} d")
-    ax[1, 0].axhline(sd, color="k", ls=":", lw=0.8); ax[1, 0].legend()
-    ax[1, 0].set_title("Desviación móvil")
-
-    ax[1, 1].plot(r.rolling(w2).mean(), lw=0.9)
-    ax[1, 1].axhline(0, color="k", ls=":", lw=0.8)
-    ax[1, 1].set_title(f"Media móvil {w2} d")
-
-    ax[1, 2].scatter(r.shift(1), r.abs(), s=3, alpha=0.3)
-    ax[1, 2].set_xlabel("r(t-1)"); ax[1, 2].set_ylabel("|r(t)|")
-    ax[1, 2].set_title(f"Apalancamiento (corr={r.shift(1).corr(r.abs()):.2f})")
-    plt.tight_layout(); plt.show()
-
-
-def graficar_acf(ret, lags=40):
-    """ACF de r, ACF de r² y PACF de r para todas las series."""
-    fig, axes = plt.subplots(len(ret.columns), 3, figsize=(13, 2.4 * len(ret.columns)))
-    for i, c in enumerate(ret.columns):
-        r = ret[c].dropna()
-        sm.graphics.tsa.plot_acf(r, lags=lags, ax=axes[i, 0], zero=False, title=f"{c}: ACF de r")
-        sm.graphics.tsa.plot_acf(r ** 2, lags=lags, ax=axes[i, 1], zero=False, title=f"{c}: ACF de r²")
-        sm.graphics.tsa.plot_pacf(r, lags=lags, ax=axes[i, 2], zero=False, method="ywm", title=f"{c}: PACF de r")
-    plt.tight_layout(); plt.show()
 
 
 
-def graficar_estacionalidad(r, c):
-    """Media por mes y por día de la semana (relevante sobre todo para gas natural)."""
-    r = r.dropna()
-    fig, ax = plt.subplots(1, 2, figsize=(12, 3.2))
-    r.groupby(r.index.month).mean().plot.bar(ax=ax[0], title=f"{c}: media por mes")
-    r.groupby(r.index.dayofweek).mean().plot.bar(ax=ax[1], title=f"{c}: media por día (0 = lunes)")
-    plt.tight_layout(); plt.show()
-
-
-def piso_referencia(r, n_splits=4):
-    """
-    Piso de referencia por pliegue (ventana expansiva, mismos cortes que K_fold del baseline).
-    Cualquier modelo debe compararse contra RMSE_cero y RMSE_media_train.
-    """
-    r = r.dropna(); n = len(r); filas = []
-    for i in range(1, n_splits + 1):
-        s = (i * n) // (n_splits + 1) + n % (n_splits + 1)
-        v = n // (n_splits + 1)
-        tr_, va_ = r.iloc[:s], r.iloc[s:s + v]
-        filas.append({
-            "pliegue": i, "val_ini": va_.index[0].date(), "val_fin": va_.index[-1].date(),
-            "std_val": va_.std(),
-            "RMSE_cero": np.sqrt((va_ ** 2).mean()),
-            "RMSE_media_train": np.sqrt(((va_ - tr_.mean()) ** 2).mean()),
-        })
-    return pd.DataFrame(filas).round(5)
-
-
-def escalamiento_horizonte(r, horizontes=(1, 5, 10, 21, 42, 63)):
-    """Retornos acumulados a H días (no solapados): desviación, razón de varianzas y curtosis."""
-    r = r.dropna(); filas = []
-    for H in horizontes:
-        rH = r.rolling(H).sum().dropna().iloc[::H]
-        filas.append({"H": H, "n": len(rH), "std": rH.std(),
-                      "VR": rH.var() / (H * r.var()),          # ≈ 1: retornos casi independientes
-                      "curtosis_exc": stats.kurtosis(rH)})
-    return pd.DataFrame(filas).round(4)
-
-
-def comparar_train_val(tr, va):
-    """SOLO referencia: ¿se parece la validación al train? No cambia ninguna decisión."""
-    filas = []
-    for c in tr.columns:
-        a, b = tr[c].dropna(), va[c].dropna()
-        ks = stats.ks_2samp(a, b)
-        filas.append({"serie": c, "std_train": a.std(), "std_val": b.std(),
-                      "razon_std": b.std() / a.std(), "KS_stat": ks.statistic, "KS_p": ks.pvalue})
-    return pd.DataFrame(filas).round(4)
-
-
-# =====================================================================================
-# 03 · Exógenas
-# =====================================================================================
-def correlaciones_con_target(ret, target, exog):
-    """Pearson y Spearman de cada exógena con el retorno del target (misma fecha)."""
-    t = pd.DataFrame({
-        "Pearson": ret[exog + [target]].corr(method="pearson")[target].drop(target),
-        "Spearman": ret[exog + [target]].corr(method="spearman")[target].drop(target),
-    })
-    return t.sort_values("Pearson", key=lambda x: x.abs(), ascending=False)
-
-
-def correlaciones_volatilidad(ret, target, exog):
-    """Spearman de cada exógena (con signo y en valor absoluto) con |target|."""
-    filas = []
-    for c in exog:
-        filas.append({
-            "exog": c,
-            "signo_vs_|WTI|": ret[c].corr(ret[target].abs(), method="spearman"),
-            "|x|_vs_|WTI|": ret[c].abs().corr(ret[target].abs(), method="spearman"),
-        })
-    return pd.DataFrame(filas).set_index("exog").round(4)
-
-
-def correlacion_rezagada(ret, target, exog, max_lag=10):
-    """corr(exógena_{t-k}, target_t) para k = 0..max_lag (k = 0 es contemporánea)."""
-    return pd.DataFrame(
-        {c: [ret[c].shift(k).corr(ret[target]) for k in range(max_lag + 1)] for c in exog},
-        index=pd.RangeIndex(max_lag + 1, name="rezago"))
-
-
-def graficar_correlaciones(ret, target, exog, max_lag=10):
-    corr = ret.corr()
-    fig, ax = plt.subplots(1, 3, figsize=(20, 5))
-    im = ax[0].imshow(corr, cmap="coolwarm", vmin=-1, vmax=1)
-    ax[0].set_xticks(range(len(corr))); ax[0].set_xticklabels(corr.columns, rotation=45)
-    ax[0].set_yticks(range(len(corr))); ax[0].set_yticklabels(corr.columns)
-    for i in range(len(corr)):
-        for j in range(len(corr)):
-            ax[0].text(j, i, f"{corr.iloc[i, j]:.2f}", ha="center", va="center", fontsize=8)
-    plt.colorbar(im, ax=ax[0]); ax[0].set_title("Correlación contemporánea (retornos, train)")
-
-    lag = correlacion_rezagada(ret, target, exog, max_lag)
-    lag.plot(ax=ax[1], marker="o")
-    banda = 1.96 / np.sqrt(len(ret))
-    ax[1].axhline(banda, color="r", ls="--", lw=0.8); ax[1].axhline(-banda, color="r", ls="--", lw=0.8)
-    ax[1].axhline(0, color="k", lw=0.8); ax[1].set_xticks(range(max_lag + 1)); ax[1].grid(alpha=0.3)
-    ax[1].set_title("exógena(t-k) vs WTI(t)  (rojo: ±1.96/√n)")
-
-    for c in exog:
-        ret[target].rolling(126).corr(ret[c]).plot(ax=ax[2], lw=0.9, label=c)
-    ax[2].axhline(0, color="k", ls=":"); ax[2].legend(ncol=3); ax[2].set_title("Correlación móvil 126 d con el WTI")
-    plt.tight_layout(); plt.show()
-
-
-def granger_tabla(ret, target, exog, maxlag=5, volatilidad=False):
-    """
-    p-valores de Granger (F, 'ssr_ftest'): ¿los rezagos de la exógena ayudan a predecir el target?
-    volatilidad=False: exógena con signo -> target.  volatilidad=True: {signo, |x|} -> |target|.
-    """
-    filas = []
-    for c in exog:
-        variantes = {"signo": ret[c], "abs": ret[c].abs()} if volatilidad else {"signo": ret[c]}
-        y = ret[target].abs() if volatilidad else ret[target]
-        for nombre, x in variantes.items():
-            d = pd.concat([y.rename("y"), x.rename("x")], axis=1).dropna()
-            res = grangercausalitytests(d, maxlag=maxlag)
-            for k in range(1, maxlag + 1):
-                filas.append({"exog": c, "pred": nombre, "rezago": k, "p": res[k][0]["ssr_ftest"][1]})
-    idx = ["exog", "pred"] if volatilidad else ["exog"]
-    tab = pd.DataFrame(filas).pivot_table(index=idx, columns="rezago", values="p")
-    n_pruebas = len(filas)
-    return tab, 0.05 / n_pruebas       # (tabla, umbral de Bonferroni)
-
-
-def vif_exogenas(ret, exog):
-    """Colinealidad entre exógenas: > 5 preocupa, > 10 es grave."""
-    X = sm.add_constant(ret[exog].dropna())
-    return pd.Series([variance_inflation_factor(X.values, i) for i in range(1, X.shape[1])],
-                     index=exog, name="VIF").round(2)
-
-
-def _spearman_circular(x, y, nperm, rng):
-    """Spearman con p-valor por desplazamiento circular de x (conserva autocorrelación y volatilidad)."""
-    rx, ry = stats.rankdata(x), stats.rankdata(y)
-    rx, ry = (rx - rx.mean()) / rx.std(), (ry - ry.mean()) / ry.std()
-    obs = np.mean(rx * ry)
-    n = len(rx)
-    desplaz = rng.integers(21, n - 21, nperm)
-    nulo = np.array([np.mean(np.roll(rx, s) * ry) for s in desplaz])
-    return obs, (1 + np.sum(np.abs(nulo) >= abs(obs))) / (1 + nperm)
-
-
-def dependencia_circular(ret, target, exog, lags=range(1, 6), nperm=2000, seed=0):
-    """Spearman rezagado (exógena en t-k, target en t) con p-valor circular y corrección FDR."""
-    rng = np.random.default_rng(seed)
-    filas = []
-    for c in exog:
-        for relacion, (X, Y) in {
-            "signo→retorno": (ret[c], ret[target]),
-            "|x|→|WTI|":     (ret[c].abs(), ret[target].abs()),
-            "signo→|WTI|":   (ret[c], ret[target].abs()),
-        }.items():
-            for k in lags:
-                rho, p = _spearman_circular(X.values[:-k], Y.values[k:], nperm, rng)
-                filas.append({"exog": c, "relacion": relacion, "rezago": k, "rho": rho, "p": p})
-    out = pd.DataFrame(filas)
-    out["q_FDR"] = multipletests(out["p"], method="fdr_bh")[1]
-    return out
-
-
-def lift_colas(ret, target, exog, q=0.90, nperm=2000, seed=0):
-    """P(día extremo del target | exógena extrema ayer) / P(día extremo del target). 1 = sin relación."""
-    rng = np.random.default_rng(seed)
-    yext = (ret[target].abs() > ret[target].abs().quantile(q)).astype(float)
-    filas = []
-    for c in exog:
-        xext = (ret[c].abs() > ret[c].abs().quantile(q)).astype(float).shift(1)
-        d = pd.concat([xext, yext], axis=1).dropna()
-        a, b = d.iloc[:, 0].values, d.iloc[:, 1].values
-        lift = b[a == 1].mean() / b.mean()
-        nulo = np.array([b[np.roll(a, s) == 1].mean() / b.mean() for s in rng.integers(21, len(a) - 21, nperm)])
-        filas.append({"exog": c, "lift": lift, "p": (1 + np.sum(nulo >= lift)) / (1 + nperm)})
-    out = pd.DataFrame(filas)
-    out["q_FDR"] = multipletests(out["p"], method="fdr_bh")[1]
-    return out.round(4)
 
 
 
-def graficar_series_transformadas(ret, w=63):
-    """Todas las series transformadas apiladas (mismo eje de fechas), con la desviación móvil w d en la banda ±."""
-    cols = list(ret.columns)
-    fig, axes = plt.subplots(len(cols), 1, figsize=(13, 2.2 * len(cols)), sharex=True)
-    for ax, c in zip(np.atleast_1d(axes), cols):
-        r = ret[c]
-        ax.plot(r, lw=0.5)
-        ax.axhline(r.mean(), color="k", ls="--", lw=0.7)
-        sd = r.rolling(w).std()
-        ax.plot(sd, color="red", lw=0.8, label=f"±σ móvil {w} d")
-        ax.plot(-sd, color="red", lw=0.8)
-        ax.set_ylabel(f"{c}\n({unidad(c)})", fontsize=8); ax.grid(alpha=0.3)
-        ax.legend(loc="upper right", fontsize=7)
-    np.atleast_1d(axes)[0].set_title("Series transformadas, train")
-    plt.tight_layout(); plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
