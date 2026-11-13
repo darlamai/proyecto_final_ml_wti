@@ -9,7 +9,7 @@ from scipy import stats
 from statsmodels.stats.diagnostic import acorr_ljungbox, het_arch
 from statsmodels.stats.multitest import multipletests
 from statsmodels.stats.outliers_influence import variance_inflation_factor
-from statsmodels.tsa.stattools import adfuller, grangercausalitytests, kpss
+from statsmodels.tsa.stattools import adfuller, acf, grangercausalitytests, kpss
 from . import config as cfg
 
 warnings.filterwarnings("ignore")
@@ -331,6 +331,14 @@ def graficar_niveles_con_cortes(base, columnas=None, splits=None, mostrar_eda=Tr
 
 
 def diagnostico_estacionariedad(ret):
+    try:
+        from arch.unitroot import PhillipsPerron
+    except ImportError as exc:
+        raise ImportError(
+            "La prueba Phillips-Perron requiere el paquete 'arch'. "
+            "Instálalo en el entorno del notebook con: %pip install arch"
+        ) from exc
+
     filas = []
 
     for c in ret.columns:
@@ -344,13 +352,18 @@ def diagnostico_estacionariedad(ret):
             s, regression="c", nlags="auto"
         )[:2]
 
+        pp = PhillipsPerron(s, trend="c")
+
         filas.append({
             "serie": c,
             "n": len(s),
             "ADF_stat": adf_stat,
             "ADF_p": adf_p,
             "KPSS_stat": kpss_stat,
-            "KPSS_p": kpss_p
+            "KPSS_p": kpss_p,
+            "PP_stat": pp.stat,
+            "PP_p": pp.pvalue,
+            "PP_lags": pp.lags,
         })
 
     return pd.DataFrame(filas).round(4)
@@ -398,6 +411,326 @@ def diagnostico_estacionalidad(ret, rezagos=(5, 21, 252)):
         filas.append(fila)
 
     return pd.DataFrame(filas).round(4)
+
+
+
+
+def graficar_asimetria_curtosis(datos):
+    """Grafica la asimetría y la curtosis de una serie o de cada columna.
+
+    La curtosis mostrada es el exceso de curtosis: una distribución normal
+    tiene valor 0. Se ignoran valores nulos e infinitos.
+    """
+    if isinstance(datos, pd.Series):
+        datos = datos.to_frame(name=datos.name or "serie")
+    columnas = datos.select_dtypes(include="number").columns
+    if len(columnas) == 0:
+        raise ValueError("Se necesita al menos una columna numérica.")
+
+    asimetria, curtosis = {}, {}
+    for columna in columnas:
+        valores = datos[columna].replace([np.inf, -np.inf], np.nan).dropna()
+        if valores.empty:
+            asimetria[columna] = np.nan
+            curtosis[columna] = np.nan
+        else:
+            asimetria[columna] = stats.skew(valores)
+            curtosis[columna] = stats.kurtosis(valores)  # exceso (Fisher)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, max(4, 0.45 * len(columnas))))
+    pd.Series(asimetria).sort_values().plot.barh(ax=axes[0], color="steelblue")
+    axes[0].axvline(0, color="black", lw=0.8)
+    axes[0].set_title("Asimetría")
+    axes[0].set_xlabel("Asimetría de Fisher")
+    pd.Series(curtosis).sort_values().plot.barh(ax=axes[1], color="darkorange")
+    axes[1].axvline(0, color="black", lw=0.8, label="Normal = 0")
+    axes[1].set_title("Curtosis (exceso)")
+    axes[1].set_xlabel("Exceso de curtosis")
+    axes[1].legend()
+    fig.tight_layout()
+    plt.show()
+    return fig, axes
+
+
+def graficar_histograma(serie, bins=30, nombre=None):
+    """Grafica el histograma de una Serie o de cada columna numérica de un DataFrame."""
+    es_serie = isinstance(serie, pd.Series)
+    datos = serie.to_frame(name=serie.name or "Serie") if es_serie else serie
+    if not isinstance(datos, pd.DataFrame):
+        datos = pd.Series(datos, name=nombre or "Serie").to_frame()
+    columnas = datos.select_dtypes(include="number").columns
+    if len(columnas) == 0:
+        raise ValueError("Se necesita al menos una columna numérica.")
+
+    ncols = 1 if es_serie else min(3, len(columnas))
+    nrows = int(np.ceil(len(columnas) / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(6 * ncols, 3.8 * nrows), squeeze=False)
+    for ax, columna in zip(axes.ravel(), columnas):
+        valores = datos[columna].replace([np.inf, -np.inf], np.nan).dropna()
+        if valores.empty:
+            ax.set_title(f"{columna}: sin valores válidos")
+            ax.axis("off")
+            continue
+        etiqueta = nombre or str(columna)
+        ax.hist(valores, bins=bins, edgecolor="white", alpha=0.8)
+        ax.set(title=f"Histograma de {etiqueta}", xlabel=etiqueta, ylabel="Frecuencia")
+        ax.grid(axis="y", alpha=0.25)
+    for ax in axes.ravel()[len(columnas):]:
+        ax.axis("off")
+    fig.tight_layout()
+    plt.show()
+    return fig, axes.ravel()[0] if es_serie else axes
+
+
+def graficar_qqplot(serie, nombre=None):
+    """Compara con una normal los cuantiles de una Serie o columnas numéricas."""
+    es_serie = isinstance(serie, pd.Series)
+    datos = serie.to_frame(name=serie.name or "Serie") if es_serie else serie
+    if not isinstance(datos, pd.DataFrame):
+        datos = pd.Series(datos, name=nombre or "Serie").to_frame()
+    columnas = datos.select_dtypes(include="number").columns
+    if len(columnas) == 0:
+        raise ValueError("Se necesita al menos una columna numérica.")
+
+    ncols = 1 if es_serie else min(3, len(columnas))
+    nrows = int(np.ceil(len(columnas) / ncols))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(5.5 * ncols, 5 * nrows), squeeze=False)
+    for ax, columna in zip(axes.ravel(), columnas):
+        valores = datos[columna].replace([np.inf, -np.inf], np.nan).dropna()
+        titulo = nombre or str(columna)
+        if len(valores) < 2:
+            ax.set_title(f"{titulo}: menos de dos valores válidos")
+            ax.axis("off")
+            continue
+        sm.qqplot(valores, line="45", ax=ax, fit=True)
+        ax.set_title(f"QQ-plot normal de {titulo}")
+    for ax in axes.ravel()[len(columnas):]:
+        ax.axis("off")
+    fig.tight_layout()
+    plt.show()
+    return fig, axes.ravel()[0] if es_serie else axes
+
+
+def graficar_boxplot_anual(px):
+    """Boxplot por año de cada serie: cambios de nivel y de dispersión entre años."""
+    cols = list(px.columns)
+    anios = sorted(px.index.year.unique())
+    fig, axes = plt.subplots(len(cols), 1, figsize=(12, 2.4 * len(cols)), sharex=True)
+    for ax, c in zip(np.atleast_1d(axes), cols):
+        ax.boxplot([px.loc[px.index.year == a, c].values for a in anios])
+        ax.set_ylabel(c); ax.grid(alpha=0.3)
+        ax.set_xticks(range(1, len(anios) + 1)); ax.set_xticklabels(anios)
+    plt.tight_layout(); plt.show()
+
+
+
+
+def graficar_acf_con_pvalores(ret, lags=40, rezagos_prueba=(5, 21, 252), etiqueta="r_t"):
+    """Grafica ACF de r_t y calcula pruebas Ljung–Box para varios rezagos.
+
+    Ljung–Box contrasta conjuntamente H0: las autocorrelaciones hasta el
+    rezago indicado son cero. Devuelve (figura, ejes, tabla de resultados).
+    """
+    es_serie = isinstance(ret, pd.Series)
+    datos = ret.to_frame(name=ret.name or "serie") if es_serie else ret
+    if not isinstance(datos, pd.DataFrame):
+        datos = pd.DataFrame(datos)
+    columnas = datos.select_dtypes(include="number").columns
+    if len(columnas) == 0:
+        raise ValueError("Se necesita al menos una columna numérica.")
+
+    rezagos_prueba = sorted(set(int(k) for k in rezagos_prueba if int(k) > 0))
+    if not rezagos_prueba:
+        raise ValueError("rezagos_prueba debe incluir al menos un entero positivo.")
+
+    fig, axes = plt.subplots(len(columnas), 1, figsize=(10, 3.5 * len(columnas)), squeeze=False)
+    filas = []
+    for ax, columna in zip(axes.ravel(), columnas):
+        r = datos[columna].replace([np.inf, -np.inf], np.nan).dropna()
+        if len(r) < 3:
+            raise ValueError(f"La columna {columna!r} tiene menos de 3 observaciones válidas.")
+        max_lag = min(int(lags), len(r) // 2)
+        sm.graphics.tsa.plot_acf(
+            r, lags=max_lag, ax=ax, zero=False, alpha=0.05,
+            bartlett_confint=False, title=f"{columna}: ACF de {etiqueta}",
+        )
+        ax.set_xlabel("Rezago")
+        ax.set_ylabel("Autocorrelación")
+        ax.grid(alpha=0.2)
+
+        validos = [k for k in rezagos_prueba if k < len(r)]
+        if not validos:
+            raise ValueError(f"Ningún rezago de prueba es menor que el tamaño de {columna!r}.")
+        prueba = acorr_ljungbox(r, lags=validos, return_df=True)
+        fila = {"serie": columna, "n": len(r)}
+        for k in validos:
+            fila[f"LB_Q({k})"] = prueba.loc[k, "lb_stat"]
+            fila[f"LB_p({k})"] = prueba.loc[k, "lb_pvalue"]
+        filas.append(fila)
+
+    fig.tight_layout()
+    plt.show()
+    resultados = pd.DataFrame(filas).set_index("serie").round(4)
+    return fig, axes.ravel(), resultados
+
+
+def graficar_pacf_con_pvalores(ret, lags=40):
+    """Grafica la PACF y devuelve sus coeficientes y p-valores aproximados.
+
+    Los p-valores usan la aproximación normal con error estándar 1/sqrt(n);
+    evalúan cada rezago por separado, no de forma conjunta.
+    """
+    es_serie = isinstance(ret, pd.Series)
+    datos = ret.to_frame(name=ret.name or "serie") if es_serie else ret
+    if not isinstance(datos, pd.DataFrame):
+        datos = pd.DataFrame(datos)
+    columnas = datos.select_dtypes(include="number").columns
+    if len(columnas) == 0:
+        raise ValueError("Se necesita al menos una columna numérica.")
+
+    fig, axes = plt.subplots(len(columnas), 1, figsize=(10, 3.5 * len(columnas)), squeeze=False)
+    filas = []
+    for ax, columna in zip(axes.ravel(), columnas):
+        r = datos[columna].replace([np.inf, -np.inf], np.nan).dropna()
+        if len(r) < 3:
+            raise ValueError(f"La columna {columna!r} tiene menos de 3 observaciones válidas.")
+        max_lag = min(int(lags), len(r) // 2 - 1)
+        if max_lag < 1:
+            raise ValueError(f"No hay suficientes observaciones para calcular la PACF de {columna!r}.")
+
+        coeficientes = sm.tsa.stattools.pacf(r, nlags=max_lag, method="ywm")
+        sm.graphics.tsa.plot_pacf(
+            r, lags=max_lag, ax=ax, zero=False, alpha=0.05, method="ywm",
+            title=f"{columna}: PACF de retornos r_t",
+        )
+        ax.set_xlabel("Rezago")
+        ax.set_ylabel("Autocorrelación parcial")
+        ax.grid(alpha=0.2)
+
+        se = 1 / np.sqrt(len(r))
+        for k, coef in enumerate(coeficientes[1:], start=1):
+            filas.append({
+                "serie": columna,
+                "rezago": k,
+                "PACF": coef,
+                "p_aprox": 2 * stats.norm.sf(abs(coef / se)),
+            })
+
+    fig.tight_layout()
+    plt.show()
+    resultados = pd.DataFrame(filas).set_index(["serie", "rezago"]).round(4)
+    return fig, axes.ravel(), resultados
+
+
+
+
+def graficar_volatilidad_movil(ret, ventanas=(21, 63)):
+    """Grafica desviación estándar móvil de una Serie o de columnas numéricas."""
+    datos = ret.to_frame(name=ret.name or "serie") if isinstance(ret, pd.Series) else ret
+    if not isinstance(datos, pd.DataFrame):
+        datos = pd.DataFrame(datos)
+    columnas = datos.select_dtypes(include="number").columns
+    ventanas = tuple(int(w) for w in ventanas if int(w) > 1)
+    if len(columnas) == 0 or not ventanas:
+        raise ValueError("Se requieren columnas numéricas y ventanas mayores que 1.")
+
+    fig, axes = plt.subplots(len(columnas), 1, figsize=(12, 3 * len(columnas)), squeeze=False)
+    for ax, columna in zip(axes.ravel(), columnas):
+        s = datos[columna].replace([np.inf, -np.inf], np.nan)
+        for w in ventanas:
+            ax.plot(s.rolling(w).std(), lw=1, label=f"Ventana {w}")
+        ax.set_title(f"{columna}: volatilidad móvil")
+        ax.set_ylabel("Desviación estándar")
+        ax.grid(alpha=0.25)
+        ax.legend()
+    fig.tight_layout()
+    plt.show()
+    return fig, axes.ravel()
+
+
+def diagnostico_arch_lm(residuos_media, lags=10):
+    """Aplica ARCH-LM a residuos de una ecuación de media, por serie.
+
+    H0: no hay efectos ARCH hasta el número de rezagos especificado.
+    """
+    datos = (residuos_media.to_frame(name=residuos_media.name or "serie")
+             if isinstance(residuos_media, pd.Series) else residuos_media)
+    if not isinstance(datos, pd.DataFrame):
+        datos = pd.DataFrame(datos)
+    columnas = datos.select_dtypes(include="number").columns
+    if len(columnas) == 0:
+        raise ValueError("Se necesita al menos una columna numérica de residuos.")
+    if int(lags) < 1:
+        raise ValueError("lags debe ser un entero positivo.")
+
+    filas = []
+    for columna in columnas:
+        s = datos[columna].replace([np.inf, -np.inf], np.nan).dropna()
+        if len(s) <= int(lags) + 1:
+            raise ValueError(f"No hay suficientes residuos válidos en {columna!r} para lags={lags}.")
+        lm_stat, lm_p, f_stat, f_p = het_arch(s, nlags=int(lags))
+        filas.append({
+            "serie": columna,
+            "n": len(s),
+            "ARCH_LM_stat": lm_stat,
+            "ARCH_LM_p": lm_p,
+            "ARCH_F_stat": f_stat,
+            "ARCH_F_p": f_p,
+            "lags": int(lags),
+        })
+    return pd.DataFrame(filas).set_index("serie").round(4)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -740,201 +1073,6 @@ def graficar_medias_moviles(px, w1=63, w2=252):
     plt.tight_layout(); plt.show()
 
 
-def graficar_histogramas_niveles(px):
-    """Distribución de los niveles de cada serie."""
-    cols = list(px.columns)
-    fig, axes = plt.subplots(2, 4, figsize=(15, 6))
-    for ax, c in zip(axes.ravel(), cols):
-        ax.hist(px[c], bins=50, alpha=0.7); ax.set_title(c)
-    for ax in axes.ravel()[len(cols):]:
-        ax.axis("off")
-    plt.tight_layout(); plt.show()
-
-
-def graficar_boxplot_anual(px):
-    """Boxplot por año de cada serie: cambios de nivel y de dispersión entre años."""
-    cols = list(px.columns)
-    anios = sorted(px.index.year.unique())
-    fig, axes = plt.subplots(len(cols), 1, figsize=(12, 2.4 * len(cols)), sharex=True)
-    for ax, c in zip(np.atleast_1d(axes), cols):
-        ax.boxplot([px.loc[px.index.year == a, c].values for a in anios])
-        ax.set_ylabel(c); ax.grid(alpha=0.3)
-        ax.set_xticks(range(1, len(anios) + 1)); ax.set_xticklabels(anios)
-    plt.tight_layout(); plt.show()
-
-
-
-
-
-def drawdown_maximo(s):
-    """Mayor caída desde un máximo previo hasta el valle posterior."""
-    dd = s / s.cummax() - 1
-    valle = dd.idxmin()
-    return {"pico": s.loc[:valle].idxmax().date(), "valle": valle.date(), "caida_%": round(100 * dd.min(), 1)}
-
-
-def tabla_drawdown(px):
-    return pd.DataFrame({c: drawdown_maximo(px[c]) for c in px.columns}).T
-
-
-def graficar_estacionalidad_nivel(px, c):
-    """
-    Índice estacional del nivel: precio / media del año, promediado por mes.
-    Dividir entre la media anual quita el efecto de la tendencia entre años. 1 = el promedio del año.
-    """
-    idx = px[c] / px[c].groupby(px.index.year).transform("mean")
-    idx.groupby(idx.index.month).mean().plot.bar(figsize=(8, 3.2), title=f"{c}: índice estacional del nivel por mes")
-    plt.axhline(1, color="k", ls=":", lw=0.8)
-    plt.tight_layout(); plt.show()
-
-
-def graficar_correlacion_niveles(px):
-    """Spearman entre NIVELES. Es espuria (tendencias): solo ilustra por qué se transforma. No decide nada."""
-    corr = px.corr(method="spearman")
-    fig, ax = plt.subplots(figsize=(6, 5))
-    im = ax.imshow(corr, cmap="coolwarm", vmin=-1, vmax=1)
-    ax.set_xticks(range(len(corr))); ax.set_xticklabels(corr.columns, rotation=45)
-    ax.set_yticks(range(len(corr))); ax.set_yticklabels(corr.columns)
-    for i in range(len(corr)):
-        for j in range(len(corr)):
-            ax.text(j, i, f"{corr.iloc[i, j]:.2f}", ha="center", va="center", fontsize=8)
-    plt.colorbar(im); ax.set_title("Spearman de niveles (espuria, solo ilustrativa)")
-    plt.tight_layout(); plt.show()
-
-
-
-
-def diagnostico_transformaciones(px):
-    """
-    Compara nivel / diff / logret de cada serie. Usar SOLO con precios de train.
-    Métricas de escala: corr_abs_nivel, spearman_abs_nivel, ratio_std_alto_bajo.
-    """
-    filas = []
-    for c in px.columns:
-        for nombre, f in CANDIDATAS.items():
-            s = f(px[c]).dropna()
-            x = px[c].reindex(s.index)                       # nivel alineado con s
-            adf_stat, adf_p = adfuller(s, autolag="AIC")[:2]
-            if nombre != "nivel":
-                terc = pd.qcut(x, 3, labels=False, duplicates="drop")
-                sd_t = s.groupby(terc).std()
-                ratio = sd_t.iloc[-1] / sd_t.iloc[0]
-            else:
-                ratio = np.nan                               # sin sentido en el nivel
-            filas.append({
-                "serie": c, "transf": nombre, "n": len(s),
-                "ADF_p": adf_p,          # < 0.05: estacionaria
-                "KPSS_p": kpss(s, regression="c", nlags="auto")[1],   # > 0.05: estacionaria (tope 0.10)
-                "asimetria": stats.skew(s),
-                "curtosis": stats.kurtosis(s),          # en exceso: > 0 = colas más pesadas que la normal
-                # corr_abs_nivel: corr(|variación_t|, nivel_t). ≈ 0 (entre -0.1 y 0.1): escala adecuada;
-                # > 0.1: movimientos mayores con precio alto; < -0.1: mayores con precio bajo.
-                "corr_abs_nivel": s.abs().corr(x),
-                "ADF_stat": adf_stat,                   # solo para comparar; decide el p-valor
-                "spearman_abs_nivel": stats.spearmanr(s.abs(), x)[0],   # igual, robusta a outliers
-                # ratio_std_alto_bajo: desviación en el tercil alto del nivel / en el bajo. ≈ 1: estable.
-                "ratio_std_alto_bajo": ratio,
-            })
-    return pd.DataFrame(filas).round(4)
-
-
-def graficar_transformaciones(px, c, lags=40):
-    """Nivel / diff / logret de una serie: serie, histograma y dependencia respecto al nivel."""
-    p = px[c]
-    fig, ax = plt.subplots(3, 3, figsize=(16, 10))
-    for j, (nombre, f) in enumerate(CANDIDATAS.items()):
-        s = f(p).dropna()
-        ax[0, j].plot(s, lw=0.6)
-        ax[0, j].axhline(s.mean(), color="red", ls="--", lw=0.8)
-        ax[0, j].set_title(f"{c}: {nombre}")
-        ax[1, j].hist(s, bins=80, density=True, alpha=0.6)
-        xs = np.linspace(s.min(), s.max(), 400)
-        ax[1, j].plot(xs, stats.norm.pdf(xs, s.mean(), s.std()), "r", lw=1)
-        ax[1, j].set_title(f"asim={stats.skew(s):.2f}  curt={stats.kurtosis(s):.2f}")
-        if nombre == "nivel":
-            sm.graphics.tsa.plot_acf(s, lags=lags, ax=ax[2, j])
-            ax[2, j].set_title("ACF del nivel")
-        else:
-            x = p.reindex(s.index)
-            ax[2, j].scatter(x, s.abs(), s=3, alpha=0.3)
-            xo = np.sort(x.values)
-            ax[2, j].plot(xo, np.polyval(np.polyfit(x, s.abs(), 1), xo), "r")
-            ax[2, j].set_xlabel("nivel"); ax[2, j].set_ylabel("|x|")
-            ax[2, j].set_title(f"|{nombre}| vs nivel (r={s.abs().corr(x):.2f})")
-    plt.tight_layout(); plt.show()
-
-
-def graficar_vol(px, c, w=63):
-    """Estabilidad de la variación: diff vs logret, normalizadas para ser comparables."""
-    p = px[c]
-    fig, ax = plt.subplots(1, 2, figsize=(15, 3.5))
-    anual = {}
-    for nombre in ["diff", "logret"]:
-        s = CANDIDATAS[nombre](p).dropna()
-        (s.rolling(w).std() / s.std()).plot(ax=ax[0], label=nombre, lw=0.9)
-        sd = s.groupby(s.index.year).std()
-        anual[nombre] = sd / sd.mean()
-    ax[0].axhline(1, color="k", ls=":", lw=0.8); ax[0].legend()
-    ax[0].set_title(f"{c}: desviación móvil {w} d / desviación total")
-    pd.DataFrame(anual).plot.bar(ax=ax[1])
-    ax[1].set_title("Desviación anual / promedio de las desviaciones anuales")
-    plt.tight_layout(); plt.show()
-
-
-def elasticidad_vol_nivel(px, series, ventanas=(21, 63, 126)):
-    """
-    k en  log(desv. móvil de la diferencia) = a + k·log(nivel medio móvil).
-    k ≈ 0: la variación en puntos es constante (conviene diff); k ≈ 1: proporcional al nivel (logret).
-    """
-    filas = []
-    for c in series:
-        p = px[c]
-        for w in ventanas:
-            vol = p.diff().rolling(w).std().dropna()
-            niv = p.rolling(w).mean().reindex(vol.index)
-            m = sm.OLS(np.log(vol), sm.add_constant(np.log(niv))).fit(
-                cov_type="HAC", cov_kwds={"maxlags": w})       # ventanas solapadas
-            lo, hi = m.conf_int().iloc[1]
-            filas.append({"serie": c, "ventana": w, "k": m.params.iloc[1], "IC95_inf": lo, "IC95_sup": hi})
-    return pd.DataFrame(filas).round(3)
-
-
-# =====================================================================================
-# 02 · Retornos (una serie a la vez)
-# =====================================================================================
-def estadisticos(serie, nombre=None, lags=10):
-    """Estadísticos descriptivos y pruebas para una serie ya transformada (retornos o diferencias)."""
-    r = serie.dropna()
-    nombre = nombre or serie.name
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")   # KPSS lanza InterpolationWarning en los extremos
-        adf_stat, adf_p = adfuller(r, autolag="AIC")[:2]
-        kpss_stat, kpss_p = kpss(r, regression="c", nlags="auto")[:2]
-
-    jb_stat, jb_p = stats.jarque_bera(r)
-    gl_t, loc_t, esc_t = stats.t.fit(r)
-    lb_r = acorr_ljungbox(r, lags=[lags])
-    lb_r2 = acorr_ljungbox(r ** 2, lags=[lags])
-    lm_stat, lm_p, _, _ = het_arch(r, nlags=lags)
-
-    res = {
-        "n": len(r), "media": r.mean(), "std": r.std(),
-        "min": r.min(), "p01": r.quantile(0.01), "p05": r.quantile(0.05), "mediana": r.median(),
-        "p95": r.quantile(0.95), "p99": r.quantile(0.99), "max": r.max(),
-        "asimetria": stats.skew(r), "curtosis_exceso": stats.kurtosis(r),
-        "JB_stat": jb_stat, "JB_p": jb_p, "t_gl": gl_t,
-        "ADF_stat": adf_stat, "ADF_p": adf_p, "KPSS_stat": kpss_stat, "KPSS_p": kpss_p,
-        f"LB_r_p({lags})": lb_r["lb_pvalue"].iloc[0],
-        f"LB_r2_p({lags})": lb_r2["lb_pvalue"].iloc[0],
-        f"ARCH_LM_p({lags})": lm_p,
-        "autocorr_r_lag1": r.autocorr(1), "autocorr_r2_lag1": (r ** 2).autocorr(1),
-        "apalancamiento": r.shift(1).corr(r.abs()),   # corr(r(t-1), |r(t)|)
-        "VaR_1%": -r.quantile(0.01), "VaR_5%": -r.quantile(0.05),
-        "ES_1%": -r[r <= r.quantile(0.01)].mean(), "ES_5%": -r[r <= r.quantile(0.05)].mean(),
-    }
-    return pd.Series(res, name=nombre)
-
 
 def tabla_estadisticos(ret, lags=10):
     return pd.concat([estadisticos(ret[c], c, lags) for c in ret.columns], axis=1)
@@ -998,6 +1136,7 @@ def graficar_acf(ret, lags=40):
         sm.graphics.tsa.plot_acf(r ** 2, lags=lags, ax=axes[i, 1], zero=False, title=f"{c}: ACF de r²")
         sm.graphics.tsa.plot_pacf(r, lags=lags, ax=axes[i, 2], zero=False, method="ywm", title=f"{c}: PACF de r")
     plt.tight_layout(); plt.show()
+
 
 
 def graficar_estacionalidad(r, c):
