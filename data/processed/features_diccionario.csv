@@ -1,0 +1,68 @@
+,descripción,detalle,unidad
+r2_lag1,Rezago del retorno al cuadrado,τ-1,%²
+absr_lag1,Rezago del retorno en valor absoluto,τ-1,%
+park_lag1,Rezago del estimador de Parkinson,τ-1,%²
+r2_lag2,Rezago del retorno al cuadrado,τ-2,%²
+absr_lag2,Rezago del retorno en valor absoluto,τ-2,%
+park_lag2,Rezago del estimador de Parkinson,τ-2,%²
+r2_lag3,Rezago del retorno al cuadrado,τ-3,%²
+absr_lag3,Rezago del retorno en valor absoluto,τ-3,%
+park_lag3,Rezago del estimador de Parkinson,τ-3,%²
+r2_lag4,Rezago del retorno al cuadrado,τ-4,%²
+absr_lag4,Rezago del retorno en valor absoluto,τ-4,%
+park_lag4,Rezago del estimador de Parkinson,τ-4,%²
+r2_lag5,Rezago del retorno al cuadrado,τ-5,%²
+absr_lag5,Rezago del retorno en valor absoluto,τ-5,%
+park_lag5,Rezago del estimador de Parkinson,τ-5,%²
+r2_lag6,Rezago del retorno al cuadrado,τ-6,%²
+absr_lag6,Rezago del retorno en valor absoluto,τ-6,%
+park_lag6,Rezago del estimador de Parkinson,τ-6,%²
+r2_lag7,Rezago del retorno al cuadrado,τ-7,%²
+absr_lag7,Rezago del retorno en valor absoluto,τ-7,%
+park_lag7,Rezago del estimador de Parkinson,τ-7,%²
+r2_lag8,Rezago del retorno al cuadrado,τ-8,%²
+absr_lag8,Rezago del retorno en valor absoluto,τ-8,%
+park_lag8,Rezago del estimador de Parkinson,τ-8,%²
+r2_lag9,Rezago del retorno al cuadrado,τ-9,%²
+absr_lag9,Rezago del retorno en valor absoluto,τ-9,%
+park_lag9,Rezago del estimador de Parkinson,τ-9,%²
+r2_lag10,Rezago del retorno al cuadrado,τ-10,%²
+absr_lag10,Rezago del retorno en valor absoluto,τ-10,%
+park_lag10,Rezago del estimador de Parkinson,τ-10,%²
+r2_lag11,Rezago del retorno al cuadrado,τ-11,%²
+absr_lag11,Rezago del retorno en valor absoluto,τ-11,%
+park_lag11,Rezago del estimador de Parkinson,τ-11,%²
+r2_lag12,Rezago del retorno al cuadrado,τ-12,%²
+absr_lag12,Rezago del retorno en valor absoluto,τ-12,%
+park_lag12,Rezago del estimador de Parkinson,τ-12,%²
+r2_lag13,Rezago del retorno al cuadrado,τ-13,%²
+absr_lag13,Rezago del retorno en valor absoluto,τ-13,%
+park_lag13,Rezago del estimador de Parkinson,τ-13,%²
+r2_lag14,Rezago del retorno al cuadrado,τ-14,%²
+absr_lag14,Rezago del retorno en valor absoluto,τ-14,%
+park_lag14,Rezago del estimador de Parkinson,τ-14,%²
+r2_lag15,Rezago del retorno al cuadrado,τ-15,%²
+absr_lag15,Rezago del retorno en valor absoluto,τ-15,%
+park_lag15,Rezago del estimador de Parkinson,τ-15,%²
+r2_lag16,Rezago del retorno al cuadrado,τ-16,%²
+absr_lag16,Rezago del retorno en valor absoluto,τ-16,%
+park_lag16,Rezago del estimador de Parkinson,τ-16,%²
+r2_lag17,Rezago del retorno al cuadrado,τ-17,%²
+absr_lag17,Rezago del retorno en valor absoluto,τ-17,%
+park_lag17,Rezago del estimador de Parkinson,τ-17,%²
+r2_lag18,Rezago del retorno al cuadrado,τ-18,%²
+absr_lag18,Rezago del retorno en valor absoluto,τ-18,%
+park_lag18,Rezago del estimador de Parkinson,τ-18,%²
+r2_lag19,Rezago del retorno al cuadrado,τ-19,%²
+absr_lag19,Rezago del retorno en valor absoluto,τ-19,%
+park_lag19,Rezago del estimador de Parkinson,τ-19,%²
+r2_lag20,Rezago del retorno al cuadrado,τ-20,%²
+absr_lag20,Rezago del retorno en valor absoluto,τ-20,%
+park_lag20,Rezago del estimador de Parkinson,τ-20,%²
+vol_r_5,Desviación estándar móvil del retorno,ventana de 5 días,%
+park_media_5,Promedio móvil del estimador de Parkinson,ventana de 5 días,%²
+vol_r_21,Desviación estándar móvil del retorno,ventana de 21 días,%
+park_media_21,Promedio móvil del estimador de Parkinson,ventana de 21 días,%²
+vol_r_63,Desviación estándar móvil del retorno,ventana de 63 días,%
+park_media_63,Promedio móvil del estimador de Parkinson,ventana de 63 días,%²
+r_lag1,Retorno del día anterior (con signo),τ-1,%

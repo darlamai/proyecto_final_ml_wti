@@ -1,3 +1,11 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from src import feature_extraction as fe
+from src import config as cfg
+
+
+
 def construir_features(base_ret, col_r="WTI", col_park="WTI_park",
                        n_lags=10, ventanas=(5, 21, 63)):
     """

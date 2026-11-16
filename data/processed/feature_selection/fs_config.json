@@ -1,0 +1,25 @@
+{
+    "metodo": "SelectKBest con información mutua (mutual_info_regression)",
+    "random_state": 42,
+    "k": 16,
+    "criterio_k": "menor MSE promedio en los 10 folds, con QLIKE cercana al mínimo",
+    "nota": "La selección se recalcula dentro de cada fold con su entrenamiento. variables_desarrollo es solo descriptiva (ajuste con todo 2010-2024).",
+    "variables_desarrollo": [
+        "park_lag1",
+        "park_lag2",
+        "park_lag3",
+        "park_lag4",
+        "park_lag5",
+        "park_lag6",
+        "park_lag7",
+        "park_lag8",
+        "park_lag9",
+        "park_lag18",
+        "vol_r_5",
+        "park_media_5",
+        "vol_r_21",
+        "park_media_21",
+        "vol_r_63",
+        "park_media_63"
+    ]
+}
