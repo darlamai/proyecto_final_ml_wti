@@ -1,0 +1,7 @@
+métrica,comparación,T,rezagos HAC,diferencia media,DM,p-valor,¿significativo (5%)?,modelo con menor pérdida
+QLIKE,AR-EGARCH − Random Forest,461,5,0.3997546915502656,1.4543049582756649,0.1465437387269366,False,Random Forest
+QLIKE,AR-EGARCH − Ingenuo (media 21 días),461,5,0.2647676810375664,1.4038482774691794,0.16103877420626334,False,Ingenuo (media 21 días)
+QLIKE,Random Forest − Ingenuo (media 21 días),461,5,-0.1349870105126993,-1.411966213489611,0.15863600539074318,False,Random Forest
+MSE,AR-EGARCH − Random Forest,461,5,85.98707595988297,0.3566086322435095,0.7215483293636047,False,Random Forest
+MSE,AR-EGARCH − Ingenuo (media 21 días),461,5,31.17323043394536,0.8616654385210984,0.38932059101689886,False,Ingenuo (media 21 días)
+MSE,Random Forest − Ingenuo (media 21 días),461,5,-54.813845525937616,-0.25318797475331023,0.8002360697222235,False,Random Forest
