@@ -28,11 +28,14 @@ import yfinance as yf
 
 
 
-#   Prompt (Claude, 13-nov-2026): "estoy sacando solo las salidas al cierre de
-#   wti, como obtengo lo que me falta para la volatilidad?"
-#   Prompt (Claude, 13-nov-2026): "no, no deseo que modifique mi script para
-#   que no solo extraiga el archivo con la data de cierre, osea no quiero uno
-#   aparte" (incorporar máximo y mínimo en el mismo archivo).
+# Prompt  (Claude, 13-nov-2026): "Ayúdame a organizar este script en
+# funciones para descargar y guardar los datos diarios del futuro WTI (CL=F)
+# desde Yahoo Finance. Necesito obtener el precio de cierre, el máximo y el
+# mínimo diarios en un solo archivo CSV, con las columnas WTI, WTI_High y WTI_Low; 
+# La fecha fin debe ser el 31 de octubre de 2026.
+# La función de descarga debe extraer esos campos
+# No imputes datos ni calcules retornos: devuelve el
+# DataFrame de precios y muestra un resumen de la descarga o del archivo leído."
 
 
 start_date = "2010-01-01"
@@ -265,6 +268,3 @@ def main() -> pd.DataFrame:
 
     return prices
 
-
-if __name__ == "__main__":
-    main()

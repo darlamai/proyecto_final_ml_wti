@@ -43,11 +43,11 @@ import pandas as pd
 from . import config as cfg
 
 
-# Prompt [RECONSTRUIDO] (asistente de IA, fecha): "Crea una función que lea el CSV de precios
+# Prompt: "Crea una función que lea el CSV de precios
 #   crudos, convierta la columna Date en índice de fechas, ordene cronológicamente y conserve
 #   solo las columnas del config. Si la ruta es una carpeta, que use el CSV más reciente que
 #   tenga esas columnas."
-# Referencias: [1]
+
 
 def load_raw(ruta=None):
     """
@@ -115,9 +115,9 @@ def load_raw(ruta=None):
 
 
 
-# Prompt [RECONSTRUIDO] (asistente de IA, fecha): "Crea una función que calcule la cantidad y
+# Prompt: "Crea una función que calcule la cantidad y
 #   el porcentaje de valores faltantes por columna, ordenados de mayor a menor."
-# Referencias: [1]
+
 
 def summarize_missing_values(base):
     """
@@ -150,11 +150,9 @@ def summarize_missing_values(base):
         "porcentaje": (base.isna().mean() * 100).round(2),
     }).sort_values("cantidad", ascending=False)
 
-# Prompt [RECONSTRUIDO] (asistente de IA, fecha): "Crea una función que cuente los valores
+
+# Prompt: "Crea una función que cuente los valores
 #   negativos y su porcentaje en cada columna numérica de un DataFrame."
-# Referencias: [1]
-
-
 
 def summarize_negative_values(base):
     """
@@ -184,11 +182,9 @@ def summarize_negative_values(base):
     }).sort_values("cantidad", ascending=False)
 
 
-# Prompt [RECONSTRUIDO] (asistente de IA, fecha): "Crea una función que devuelva las filas que
+# Prompt: "Crea una función que devuelva las filas que
 #   tienen al menos un valor negativo en sus columnas numéricas."
-# Uso en el proyecto: identificó el 20 y 21 de abril de 2020 (cierre y mínimo negativos).
-# Referencias: [1]
-
+# Se dentificó el 20 y 21 de abril de 2020 (cierre y mínimo negativos).
 
 
 def rows_with_negative_values(base):
@@ -214,12 +210,9 @@ def rows_with_negative_values(base):
     filas_negativas = numericas.lt(0).any(axis=1)
     return base.loc[filas_negativas]
 
-# Prompt [RECONSTRUIDO] (asistente de IA, fecha): "Crea una función que elimine las filas con
+# Prompt: "Crea una función que elimine las filas con
 #   valores nulos solo si el porcentaje medio de faltantes es menor o igual a un umbral; si lo
-#   supera, que no elimine nada y avise para revisarlo manualmente."
-# Uso en el proyecto: la serie no tiene faltantes, por lo que no se elimina ninguna fila.
-# Referencias: [1]
-
+#   supera, que no elimine nada."
 
 
 def drop_missing_rows(base, umbral=None):

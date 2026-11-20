@@ -23,7 +23,7 @@ columns= ["WTI","WTI_High", "WTI_Low"]
 
 
 
-#   Prompt (Claude, 11/12-nov-2026): "ayudame a definir train, test y validation
+#   Prompt (Claude, 11/12-nov-2026): "Ayúdame a definir train, test y validation
 #   adecuadamente: asi tengo dividida mi data: train: ("2010-01-04", "2018-12-31"),
 #   val: ("2019-01-01", "2019-12-31"), test: ("2020-01-01", "2026-10-30")"
 
@@ -45,3 +45,6 @@ threshold_outlier_z = 5     # |z| > 5, con la desviación calculada solo en trai
 # Propuestos: confirmar con el tutor y dejar escritos ANTES de ver resultados
 k_grid = list(range(1, 21))          # longitud de la ventana de entrada
 h_grid = [1, 5, 10, 21, 63]          # horizonte de predicción / generación
+
+
+parkinson = {"WTI_park": ("WTI_High", "WTI_Low")}

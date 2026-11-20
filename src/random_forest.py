@@ -33,22 +33,17 @@ H_MIN = 1e-8
 
 
 
-# Prompt (Claude, 15-nov-2026): "Ahora dame el codigo para feature selection"
-# Uso: información mutua con random_state fijo (el estimador usa vecinos más cercanos).
+# PROMPT(Claude, 15-nov-2026): "Ayúdame a crear funciones auxiliares para un modelo Random Forest de regresión:
+#   una que use información mutua con semilla fija para seleccionar características, otra que
+#   genere una máscara para filtrar observaciones entre dos fechas y otra que calcule MSE y
+#   QLIKE por observación entre los valores observados y las predicciones.
+
 
 mi_score = partial(mutual_info_regression, random_state=SEED)
 
-# Prompt (Claude, 15-nov-2026): "Ahora dame el codigo para feature selection"
 def mascara(index, ini, fin):
     return (index >= ini) & (index <= fin)
 
-
-
-# Prompt (Claude, 15-nov-2026): "una vez que tengo tsne, las variables seleccionadas, y todo,
-#   ayudame con el codigo para el random forest con rezagos 2. Optimización con Optuna ...
-#   minimizando la QLIKE de validación"
-# Uso: QLIKE = y/h + ln(h), robusta al ruido del proxy de Parkinson.
-# Referencias: [6]
 def perdidas(y_true, h):
     # MSE y QLIKE diarios (QLIKE robusta de Patton, 2011)
     h = np.clip(np.asarray(h, dtype=float), H_MIN, None)
@@ -59,10 +54,6 @@ def perdidas(y_true, h):
 # Prompt (Claude, 15-nov-2026): "listo, ahora con esta inicializacion ayudame con el codigo para
 #   continuar con el random forest ... debes usar pipelines, usar .fit en la parte de train y con
 #   la de validacion emplear los hiperparametros"
-# Uso: .fit ajusta la selección y el Random Forest solo con el train de cada fold;
-#   .predict aplica ambos pasos a la validación.
-# Referencias: [1], [2], [3]
-
 def crear_pipeline(k, score_func=None, **params_rf):
     # Pipeline: selección tipo filter (información mutua) + Random Forest
     return Pipeline([
@@ -70,23 +61,17 @@ def crear_pipeline(k, score_func=None, **params_rf):
         ("modelo", RandomForestRegressor(random_state=SEED, n_jobs=-1, **params_rf)),
     ])
 
-# Prompt (Claude, 15-nov-2026): "No se para que tengo la infromacion mutua precalcula por fold si
-#   ya la calcule en mi feature selection"
-# Uso: devuelve los puntajes ya calculados en el notebook de selección; el resultado es
-#   idéntico a recalcular la información mutua en cada prueba de Optuna.
-# Referencias: [2]
+
+
+# Prompt (Claude): "Ayúdame a crear una función compatible con SelectKBest que use
+#   puntajes de información mutua precalculados para cada fold, y una función objetivo de Optuna
+#   que optimice los hiperparámetros de un Random Forest mediante la CV temporal proporcionada.
 
 def puntajes_fijos(scores):
     # score_func para SelectKBest que devuelve puntajes ya calculados
     return lambda X_, y_: np.asarray(scores)
 
-# Prompt (Claude, 15-nov-2026): "una vez que tengo tsne, las variables seleccionadas, y todo,
-#   ayudame con el codigo para el random forest con rezagos 2. Optimización con Optuna ..."
-# Prompt (Claude, 15-nov-2026): "listo, ahora con esta inicializacion ayudame con el codigo para
-#   continuar con el random forest ..." (k fijo en 16, elegido en feature selection).
-# Uso: QLIKE promedio de validación en los 10 folds; poda por mediana con trial.report.
-#   Se llama con: study.optimize(lambda t: objetivo(t, K_FINAL, MI_FOLD, CV, X, y), ...)
-# Referencias: [4], [5], [6]
+
 
 def objetivo(trial, K_FINAL, MI_FOLD,CV, X, y):
     params = dict(

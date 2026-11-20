@@ -24,11 +24,15 @@ from src import feature_extraction as fe
 from src import config as cfg
 
 
-# Prompt (Claude, 14-nov-2026): "ayudame con el feature selection con Lags , yo tengo mi data
-#   asi , cual serian los rezagos , YA CONSTRUI PARKINSON, ENTRARIA EN FEATURE SELECTION?"
-# Prompt (Claude, 14-nov-2026): "ayudame con el còdigo para el feature extraction"
-# Uso: extracción clásica por rezagos; en el proyecto se llama con n_lags = 20.
-# Referencias: [1], [2], [3], [4], [5], [6]
+
+# Prompt (Claude, 14-nov-2026): "Ayudame con el feature selection con Lags , yo tengo mi data
+#   asi , ¿cual serian los rezagos?"
+# Prompt (Claude, 14-nov-2026): "Ayudame con una función para construir los features."
+# Emplea una extracción clásica por rezagos; en el proyecto se llama con n_lags = 20."
+# Prompt (Claude, 14-nov-2026): "Explícame por qué se incluyen rezagos del estimador de Parkinson,
+#   promedios móviles de Parkinson y volatilidad móvil de los retornos como variables predictoras:
+#   qué mide cada variable y cómo puede ayudar a pronosticar el Parkinson del día siguiente.
+#   Aclara también por qué se usan solo datos hasta el día anterior."
 
 
 

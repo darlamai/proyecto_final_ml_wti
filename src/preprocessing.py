@@ -47,13 +47,13 @@ from . import load_clean
 
 
 
-# Prompt (Claude, 13-nov-2026): "ayudame modificando esta funcion para que vaya tambien la
+# Prompt (Claude, 13-nov-2026): "Ayúdame modificando esta funcion para que vaya tambien la
 #   transformacion de parkinson"
 # Prompt (Claude, 13-nov-2026): "no hay VIX, DXY, GOLD, ETC"
 # Prompt (Claude, 13-nov-2026): "multiplica por 100 por favor"
 # Uso: retorno logarítmico en % (100·ln(P_t/P_{t-1})) y estimador de Parkinson en %²
 #   ((100·ln(H_t/L_t))² / (4·ln 2)). Los precios <= 0 quedan en NaN.
-# Referencias: [1], [2], [3]
+
 
 def build_returns(precios, transf=None, parkinson=None, escala=100.0):
     """
@@ -116,11 +116,11 @@ def build_returns(precios, transf=None, parkinson=None, escala=100.0):
 
     return out.iloc[1:]
 
-# Prompt [RECONSTRUIDO] (asistente de IA, fecha): "Crea una función que ejecute todo el
+# Prompt : "Crea una función que ejecute todo el
 #   preprocesamiento: cargar los datos crudos, eliminar filas con nulos, calcular los
 #   retornos, dividir en train, validación y test, verificar las particiones y guardar
 #   los conjuntos en CSV."
-# Referencias: [3]
+
 
 
 def prepare_and_save(ruta_raw=None, destino=None):
@@ -173,7 +173,7 @@ def prepare_and_save(ruta_raw=None, destino=None):
 
 
 
-# Prompt [RECONSTRUIDO] (asistente de IA, fecha): "Crea una función que cargue un conjunto
+# Prompt: "Crea una función que cargue un conjunto
 #   procesado (precios o retornos) según la partición, y que bloquee la carga del test
 #   salvo que se habilite explícitamente, para no usarlo antes de la evaluación final."
 # Referencias: [3]
@@ -224,6 +224,3 @@ def load_dataset(tipo, split, permitir_test=False, carpeta=None):
     carpeta = carpeta or cfg.procesados
     return pd.read_csv(carpeta / f"{tipo}_{split}.csv", index_col=0, parse_dates=True)
 
-
-if __name__ == "__main__":
-    print(prepare_and_save())

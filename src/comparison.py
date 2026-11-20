@@ -29,14 +29,15 @@ ALFA = 0.05
 
 
 
-# Prompt (Claude, 13-nov-2026): "osea con RF modelo la volatilidad y con Garch el precio del
-#   retorno mas la volatilidad, entonces como seria la comparacion de modelos?"
-# Prompt (Claude, 17-nov-2026): "ya termine de correr random forest como el ar-egarch, ahora
-#   ayudame con el codigo para el cuaderno de comparacion de modelos, te adjunto los dos
-#   cuadernos para que veas las salidas y lo que me sirve para cargar en mi notebook de
-#   comparacion"
+# Prompt (Claude, 13-nov-2026): "Tengo pronósticos diarios de varianza del Random Forest y del
+#   AR-EGARCH, y un estimador de Parkinson como proxy de la varianza observada. ¿Cómo calculo
+#   el MSE y el QLIKE diarios para comparar ambos pronósticos?"
+# Prompt (Claude, 17-nov-2026): "Ayúdame a crear una función que compare las pérdidas por fold
+#   del Random Forest y del AR-EGARCH con pruebas pareadas de Wilcoxon y t de Student. Quiero
+#   que también resuma la pérdida media de cada modelo, la diferencia media y cuántos folds
+#   favorecen al Random Forest."
 # Uso: pérdidas diarias. QLIKE = y/h + ln(h), robusta al ruido del proxy de Parkinson.
-# Referencias: [1], [6]
+
 
 
 def perdidas(y_true, h):
@@ -62,13 +63,14 @@ def pruebas_pareadas(a, b, nombre):
 
 
 
-# Prompt (Claude, 11-nov-2026): "osea dice x ejemplo WILCOXON, no que deba usar wilcoxon..."
-#   (propuesta de Diebold-Mariano como prueba complementaria para series de tiempo).
-# Prompt (Claude, 17-nov-2026): "ya termine de correr random forest como el ar-egarch, ahora
-#   ayudame con el codigo para el cuaderno de comparacion de modelos..."
-# Uso: H0 = E[d_t] = 0 (igual precisión de pronóstico), con d_t = L1 − L2.
-#   Rezagos HAC por defecto: floor(4·(T/100)^(2/9)); pesos de Bartlett.
-# Referencias: [4], [5], [6]
+# Prompt (Claude, 11-nov-2026): "¿Qué es la prueba de Diebold–Mariano? ¿Puede complementar la
+#   comparación de pronósticos de series temporales cuando las pérdidas diarias pueden estar
+#   autocorrelacionadas?"
+# Prompt (Claude, 17-nov-2026): "Ayúdame a implementar una función Diebold–Mariano que compare
+#   dos series de pérdidas diarias, y calcule automáticamente el número de rezagos HAC con la regla indicada.
+#   Quiero que devuelva el tamaño de muestra, los rezagos usados, la diferencia media, el
+#   estadístico DM y su p-valor bilateral."
+
 
 
 def diebold_mariano(L1, L2, max_lags=None):
