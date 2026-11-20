@@ -1,4 +1,12 @@
 
+# =============================================================================
+# src/ar_garch.py
+# Funciones para estimar, diagnosticar y pronosticar el modelo econométrico
+# (media constante – EGARCH(1,1,1) con errores t de Student).
+#
+# Uso de asistentes de IA (requisito de la rúbrica):
+#   Partes de este código se generaron o adaptaron con ayuda de un asistente de IA: Claude
+# =============================================================================
 
 
 import re
@@ -12,11 +20,22 @@ from scipy import stats
 from statsmodels.stats.diagnostic import acorr_ljungbox, het_arch
 
 
+# Prompt (Claude, 13-nov-2026): "AR(1) GARCH(1,1)-t PUEDO APLICAR SOBRE LOS RT?"
+# Prompt (Claude, 13-nov-2026): "debo ver para el archmodel, alguna hipotesis que se deba cumplir?"
+# Referencias: [1], [6]
+
+
 def obtener_residuos_estandarizados(res):
     """Devuelve z_t = residuo / desviación estándar condicional."""
     return pd.Series(res.std_resid).dropna()
 
 
+# Prompt (Claude, 15-nov-2026): "dame toda todo el codigo que debo poner en mi cuaderno
+#   03a_modelo_econometrico"
+# Prompt (Claude, 15-nov-2026): "para evaluar los supuestos del modelo AR que debo usar,
+#   solo hasta junio 2019 la data de diagnostico?"
+# Uso: H0 = no hay autocorrelación en z_t hasta el rezago indicado.
+# Referencias: [3], [7]
 
 def prueba_autocorrelacion_residuos(res, lags=(10, 20)):
     z = obtener_residuos_estandarizados(res)
@@ -33,6 +52,10 @@ def prueba_autocorrelacion_residuos_cuadrados(res, lags=(10, 20)):
     tabla.index.name = "Rezago"
     return tabla
 
+
+# Prompt [VERIFICAR] (asistente de IA, fecha): "Crea una función que grafique los residuos
+#   estandarizados de un modelo de la librería arch y sus cuadrados en dos paneles."
+# Referencias: [6]
 
 def graficar_residuos(res):
     residuos_std = pd.Series(res.std_resid).dropna()
@@ -95,6 +118,15 @@ def graficar_distribucion_residuos(res):
     plt.show()
 
 
+
+
+# Prompt [VERIFICAR] (asistente de IA, fecha): "¿Cómo pruebo formalmente si los residuos
+#   estandarizados siguen una distribución t con los grados de libertad estimados?
+#   Dame una función con la prueba de Kolmogorov-Smirnov."
+# Uso: H0 = z_t sigue una t estandarizada con ν estimado.
+# Referencias: [8], [9]
+
+
 def prueba_ks_t_estandarizada(res):
     z = np.asarray(res.std_resid)
     z = z[np.isfinite(z)]
@@ -112,7 +144,10 @@ def prueba_ks_t_estandarizada(res):
         "p-valor": resultado.pvalue
     }
 
-
+# Prompt (Claude, 15-nov-2026): "dame toda todo el codigo que debo poner en mi cuaderno
+#   03a_modelo_econometrico"
+# Uso: H0 = no hay efectos ARCH remanentes en z_t.
+# Referencias: [1], [7]
 
 def prueba_arch_remanente(res, lags=10):
     z = obtener_residuos_estandarizados(res)
@@ -124,7 +159,11 @@ def prueba_arch_remanente(res, lags=10):
     }, index=["ARCH-LM", "ARCH-LM (F)"])
 
 
-
+# Prompt (Claude, 15-nov-2026): "debo ver para el archmodel, alguna hipotesis que se deba
+#   cumplir?" (restricciones de un GARCH estándar).
+# Adaptación [VERIFICAR] (asistente de IA, fecha): "Adapta la revisión de restricciones a un
+#   EGARCH(1,1,1): ¿qué condiciones de estacionariedad aplican en lugar de alpha + beta < 1?"
+# Referencias: [2], [4]
 
 def revisar_restricciones(res, tipo_vol="EGARCH"):
     """Revisa condiciones pertinentes para AR-EGARCH, no las de GARCH estándar.
@@ -187,7 +226,9 @@ def revisar_restricciones(res, tipo_vol="EGARCH"):
     return pd.DataFrame(filas, columns=["Criterio", "Valor", "Cumple"])
 
 
-
+# Prompt (Claude, 15-nov-2026): "debo ver para el archmodel, alguna hipotesis que se deba
+#   cumplir?" (significancia de los parámetros con la prueba t del summary).
+# Referencias: [6]
 def revisar_significancia_parametros(res, alpha=0.05):
     tabla = pd.DataFrame({
         "estimación": res.params,
@@ -197,6 +238,12 @@ def revisar_significancia_parametros(res, alpha=0.05):
     tabla["significativo"] = tabla["p-valor"] < alpha
     tabla.index.name = "Parámetro"
     return tabla
+
+# Prompt [VERIFICAR] (asistente de IA, fecha): "Crea una función que resuma la
+#   log-verosimilitud, AIC, BIC, número de parámetros y convergencia de un modelo de arch,
+#   para comparar varias especificaciones."
+# Referencias: [6]
+
 
 
 def metricas_modelo(res):
@@ -236,6 +283,16 @@ def prueba_sign_bias(res):
         "estadístico F": float(prueba.statistic),
         "p-valor": float(prueba.pvalue)
     }
+
+
+
+# Prompt (Claude, 13-nov-2026): "una vez que tenga la data de train con wt en retornos y la
+#   de parkinson, que debo hacer para comenzar con mi modelo ar(1) garch?"
+# Prompt (Claude, 15-nov-2026): "dame toda todo el codigo que debo poner en mi cuaderno
+#   03a_modelo_econometrico" (pronóstico a un paso por fold, indexado por el día objetivo).
+# Uso: estima con datos hasta train_fin y pronostica la varianza de cada día en
+#   [obj_ini, obj_fin] con parámetros fijos y la información hasta el día anterior.
+# Referencias: [2], [6]
 
 def pronostico_egarch(r, train_fin, obj_ini, obj_fin, espec=None):
     if espec is None:

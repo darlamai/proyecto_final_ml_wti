@@ -1,3 +1,17 @@
+# =============================================================================
+# src/config.py
+# Configuración central del proyecto: rutas, columnas de la base, cortes
+# temporales (desarrollo, test y tramo de diagnóstico), transformación de las
+# variables y parámetros de limpieza. Todos los notebooks importan este módulo
+# para usar exactamente las mismas fechas y parámetros.
+#
+
+# Uso de asistentes de IA (requisito de la rúbrica):
+#   Partes de este código se generaron o adaptaron con ayuda de un asistente de IA: Claude
+# =============================================================================
+
+
+
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
@@ -6,6 +20,12 @@ processed = root / "data" / "processed"
 
 
 columns= ["WTI","WTI_High", "WTI_Low"]
+
+
+
+#   Prompt (Claude, 11/12-nov-2026): "ayudame a definir train, test y validation
+#   adecuadamente: asi tengo dividida mi data: train: ("2010-01-04", "2018-12-31"),
+#   val: ("2019-01-01", "2019-12-31"), test: ("2020-01-01", "2026-10-30")"
 
 DEV_INI, DEV_FIN   = "2010-01-01", "2024-12-31"
 TEST_INI, TEST_FIN = "2025-01-01", "2026-10-31"

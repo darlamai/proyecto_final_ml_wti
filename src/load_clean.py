@@ -1,46 +1,53 @@
-"""
-Módulo de carga, limpieza y partición de datos financieros.
 
-Implementa las funciones auxiliares necesarias para la lectura,
-el diagnóstico de valores faltantes, la limpieza y la partición
-temporal de las series financieras utilizadas en el proyecto.
+#Módulo de carga, limpieza y partición de datos financieros.
 
-Este módulo forma parte del pipeline de preprocesamiento y proporciona
-las operaciones fundamentales que posteriormente son coordinadas
-por el módulo preprocessing.py.
+#Implementa las funciones auxiliares necesarias para la lectura,
+#el diagnóstico de valores faltantes, la limpieza y la partición
+#temporal de las series financieras utilizadas en el proyecto.
 
-Descripción
------------
-El módulo comprende las siguientes operaciones:
+#Este módulo forma parte del pipeline de preprocesamiento y proporciona
+#las operaciones fundamentales que posteriormente son coordinadas
+#por el módulo preprocessing.py.
 
-1. Carga de datos financieros crudos desde archivos CSV.
-2. Conversión y organización del índice temporal de las observaciones.
-3. Selección de las variables financieras definidas en la configuración.
-4. Diagnóstico de valores faltantes mediante el cálculo de cantidades
-   y porcentajes de valores nulos por variable.
-5. Evaluación y eliminación de observaciones incompletas según
-   el umbral de valores faltantes establecido.
-6. Partición temporal de los datos en conjuntos de entrenamiento
-   (train), validación (val) y prueba (test).
-7. Validación de la consistencia temporal y la integridad
-   de las particiones generadas.
+#Descripción
+#El módulo comprende las siguientes operaciones:
+
+#1. Carga de datos financieros crudos desde archivos CSV.
+#2. Conversión y organización del índice temporal de las observaciones.
+#3. Selección de las variables financieras definidas en la configuración.
+#4. Diagnóstico de valores faltantes mediante el cálculo de cantidades
+#   y porcentajes de valores nulos por variable.
+#5. Evaluación y eliminación de observaciones incompletas según
+#   el umbral de valores faltantes establecido.
+#6. Partición temporal de los datos en conjuntos de entrenamiento
+#   (train), validación (val) y prueba (test).
+#7. Validación de la consistencia temporal y la integridad
+#   de las particiones generadas.
 
    
-Dependencias internas
----------------------
-* src.config: configuración de rutas, variables financieras,
-  umbrales de limpieza, intervalos de partición y ventanas de evaluación.
+#Dependencias internas
+#---------------------
+#* src.config: configuración de rutas, variables financieras,
+#  umbrales de limpieza, intervalos de partición y ventanas de evaluación.
 
-Dependencias externas
----------------------
-* pandas: lectura, manipulación, limpieza y partición de DataFrames.   
+#Dependencias externas
+#---------------------
+#* pandas: lectura, manipulación, limpieza y partición de DataFrames. 
+# 
+# Uso de asistentes de IA (requisito de la rúbrica):
+#   Partes de este código se generaron o adaptaron con ayuda de un asistente de IA: Claude  
 
-"""
 
 import pandas as pd
 
 from . import config as cfg
 
+
+# Prompt [RECONSTRUIDO] (asistente de IA, fecha): "Crea una función que lea el CSV de precios
+#   crudos, convierta la columna Date en índice de fechas, ordene cronológicamente y conserve
+#   solo las columnas del config. Si la ruta es una carpeta, que use el CSV más reciente que
+#   tenga esas columnas."
+# Referencias: [1]
 
 def load_raw(ruta=None):
     """
@@ -107,6 +114,11 @@ def load_raw(ruta=None):
     return base[cfg.columns]
 
 
+
+# Prompt [RECONSTRUIDO] (asistente de IA, fecha): "Crea una función que calcule la cantidad y
+#   el porcentaje de valores faltantes por columna, ordenados de mayor a menor."
+# Referencias: [1]
+
 def summarize_missing_values(base):
     """
     Calcula un resumen estadístico de los valores faltantes
@@ -138,6 +150,11 @@ def summarize_missing_values(base):
         "porcentaje": (base.isna().mean() * 100).round(2),
     }).sort_values("cantidad", ascending=False)
 
+# Prompt [RECONSTRUIDO] (asistente de IA, fecha): "Crea una función que cuente los valores
+#   negativos y su porcentaje en cada columna numérica de un DataFrame."
+# Referencias: [1]
+
+
 
 def summarize_negative_values(base):
     """
@@ -167,6 +184,13 @@ def summarize_negative_values(base):
     }).sort_values("cantidad", ascending=False)
 
 
+# Prompt [RECONSTRUIDO] (asistente de IA, fecha): "Crea una función que devuelva las filas que
+#   tienen al menos un valor negativo en sus columnas numéricas."
+# Uso en el proyecto: identificó el 20 y 21 de abril de 2020 (cierre y mínimo negativos).
+# Referencias: [1]
+
+
+
 def rows_with_negative_values(base):
     """
     Identifica las filas que contienen valores negativos en columnas
@@ -189,6 +213,13 @@ def rows_with_negative_values(base):
     numericas = base.select_dtypes(include="number")
     filas_negativas = numericas.lt(0).any(axis=1)
     return base.loc[filas_negativas]
+
+# Prompt [RECONSTRUIDO] (asistente de IA, fecha): "Crea una función que elimine las filas con
+#   valores nulos solo si el porcentaje medio de faltantes es menor o igual a un umbral; si lo
+#   supera, que no elimine nada y avise para revisarlo manualmente."
+# Uso en el proyecto: la serie no tiene faltantes, por lo que no se elimina ninguna fila.
+# Referencias: [1]
+
 
 
 def drop_missing_rows(base, umbral=None):

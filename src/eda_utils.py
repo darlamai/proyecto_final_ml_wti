@@ -1,3 +1,17 @@
+# =============================================================================
+# src/eda_utils.py
+# Funciones del análisis exploratorio (EDA): calidad de datos, saltos y
+# movimientos extremos, estadística descriptiva, gráficos de la serie,
+# división temporal (Time Series Cross-Validation), y pruebas de diagnóstico de
+# los retornos: estacionariedad (ADF, KPSS, Phillips-Perron), estacionalidad
+# (Kruskal-Wallis), dependencia en la media (ACF, PACF, Ljung-Box) y en la
+# varianza (volatilidad móvil, ARCH-LM). Todas reciben los datos como argumento.
+#
+# Uso de asistentes de IA (requisito de la rúbrica):
+#   Partes de este código se generaron o adaptaron con ayuda de un asistente de IA: Claude
+# =============================================================================
+
+
 """Funciones del EDA (tablas y gráficos). Todas reciben los datos como argumento: nada global."""
 import warnings
 
@@ -15,7 +29,12 @@ from . import config as cfg
 
 warnings.filterwarnings("ignore")
 
-
+# Base (Claude, 11-nov-2026): "ayudame con el codigo para graficar la serie cruda WTI,  luego
+#   revisar estacionariedad, estacionalidad, acf, pacf, valores faltantes, negativos,  huecos en el
+#   calendario, saltos raros, los 10 movimientod diarios mas grandes, summary descriptivo  (hasta alli)"
+# Prompt [VERIFICAR] (asistente de IA, fecha): "Crea una función que resuma por serie el mínimo,
+#   los valores <= 0, infinitos, nulos y días sin cambio de precio."
+# Referencias: [10]
 
 
 def chequeo_calidad(base):
@@ -29,6 +48,9 @@ def chequeo_calidad(base):
     })
 
 
+# Prompt [VERIFICAR] (asistente de IA, fecha): "Crea una función que liste las mayores variaciones diarias de cada serie
+#   con fechas y precios, sin calcular el logaritmo cuando hay precios <= 0."
+# Referencias: [10]
 
 
 def saltos_extremos(base, top=5):
@@ -187,13 +209,27 @@ def top_movimientos_diarios(base, columna="WTI", top=10):
 
     return tabla_top.round(2), tabla_excluidos.round(2)
 
+# Base (Claude, 11-nov-2026): "ayudame con el codigo para graficar la serie cruda WTI,  luego
+#   revisar estacionariedad, estacionalidad, acf, pacf, valores faltantes, negativos,  huecos en el
+#   calendario, saltos raros, los 10 movimientod diarios mas grandes, summary descriptivo  (hasta alli)"
+# (resumen anual de la serie)
+# Referencias: [10]
+
+
 
 def estadisticos_por_anio(px, c):
     """Conteo, media, desviación, mínimo, mediana y máximo del nivel por año."""
     return px[c].groupby(px.index.year).agg(["count", "mean", "std", "min", "median", "max"]).round(2)
 
 
+
 # ---- EDA descriptivo de los precios (usar SOLO con precios de train) ------------------
+# Base (Claude, 11-nov-2026): "ayudame con el codigo para graficar la serie cruda WTI,  luego
+#   revisar estacionariedad, estacionalidad, acf, pacf, valores faltantes, negativos,  huecos en el
+#   calendario, saltos raros, los 10 movimientod diarios mas grandes, summary descriptivo  (hasta alli)"
+# (resumen descriptivo con asimetría, curtosis y Jarque-Bera)
+# Referencias: [6], [11]
+
 def descriptivos_precios(px):
     """Descriptivos de los niveles (precios) de cada serie."""
     filas = []
@@ -212,6 +248,7 @@ def descriptivos_precios(px):
     return pd.DataFrame(filas).set_index("serie")
 
 
+# Prompt [VERIFICAR] (asistente de IA, fecha): "Crea una función que grafique una serie temporal con su nombre y unidad."
 
 def graficar_serie_temporal(serie, nombre=None, unidad="Precio"):
     """
@@ -238,6 +275,13 @@ def graficar_serie_temporal(serie, nombre=None, unidad="Precio"):
     fig.tight_layout()
     plt.show()
 
+
+
+
+# Base (Claude, 13-nov-2026): "ELIMINO ESTOS DOS PUNTOS ENCONTRADOS CON VALORES NEGATIVOS?"
+# Adaptación [VERIFICAR] (asistente de IA, fecha): "Convierte la eliminación de filas con precios
+#   <= 0 en una función que devuelva la base limpia y las filas eliminadas."
+# Referencias: [10]
 
 def drop_nonpositive_rows(base, columns=None):
     """
@@ -267,6 +311,11 @@ def drop_nonpositive_rows(base, columns=None):
 
     return base_limpia, filas_eliminadas
 
+
+
+# Prompt [VERIFICAR] (asistente de IA, fecha): "Define las transformaciones candidatas (nivel, diferencia, retorno
+#   logarítmico) para cada serie." [Revisar si se usa en la versión final.]
+# Función que devuelva la unidad de la serie según su transformación."
 
 CANDIDATAS = {
     "nivel":  lambda s: s,
@@ -304,6 +353,9 @@ def indices_fold(idx, fila):
     return tr, va
 
 
+#  Prompt (Claude, 12-nov-2026): "cambia esta funcion para determinar el train+validation y el test"
+
+
 def graficar_niveles_con_cortes(base, columnas=None, splits=None, mostrar_eda=True):
     """Niveles de cada serie con el corte desarrollo (train+val) / test final.
 
@@ -329,6 +381,15 @@ def graficar_niveles_con_cortes(base, columnas=None, splits=None, mostrar_eda=Tr
         titulo += f"\nlínea gris: fin del tramo de diagnóstico ({eda_fin.date()})"
     np.atleast_1d(axes)[0].set_title(titulo)
     plt.tight_layout(); plt.show()
+
+
+# Base (Claude, 11-nov-2026): "ayudame con el codigo para graficar la serie cruda WTI,  luego
+#   revisar estacionariedad, estacionalidad, acf, pacf, valores faltantes, negativos,  huecos en el
+#   calendario, saltos raros, los 10 movimientod diarios mas grandes, summary descriptivo  (hasta alli)"
+# Adaptación [VERIFICAR] (asistente de IA, fecha): "Agrega la prueba de Phillips-Perron a las
+#   pruebas ADF y KPSS y devuelve una tabla por serie."
+# Uso: ADF y PP: H0 = raíz unitaria; KPSS: H0 = serie estacionaria.
+# Referencias: [1], [2], [3], [9], [10]
 
 
 def diagnostico_estacionariedad(ret):
@@ -372,6 +433,16 @@ def diagnostico_estacionariedad(ret):
 
 
 
+
+# Base (Claude, 11-nov-2026): "ayudame con el codigo para graficar la serie cruda WTI,  luego
+#   revisar estacionariedad, estacionalidad, acf, pacf, valores faltantes, negativos,  huecos en el
+#   calendario, saltos raros, los 10 movimientod diarios mas grandes, summary descriptivo  (hasta alli)"
+# Adaptación [VERIFICAR] (asistente de IA, fecha): "Resume en una tabla la prueba de
+#   Kruskal-Wallis por mes y la ACF en los rezagos 5, 21 y 252."
+# Uso: Kruskal-Wallis: H0 = los retornos de todos los meses provienen de la misma distribución.
+# Referencias: [4], [10], [11]
+
+
 def diagnostico_estacionalidad(ret, rezagos=(5, 21, 252)):
     filas = []
 
@@ -413,6 +484,10 @@ def diagnostico_estacionalidad(ret, rezagos=(5, 21, 252)):
 
     return pd.DataFrame(filas).round(4)
 
+
+
+# Prompt [VERIFICAR] (asistente de IA, fecha): "Grafica la asimetría y el exceso de curtosis de una serie o de cada columna."
+# Referencias: [11]
 
 
 
@@ -525,6 +600,13 @@ def graficar_boxplot_anual(px):
 
 
 
+# Base (Claude, 11-nov-2026): "ayudame con el codigo para graficar la serie cruda WTI,  luego
+#   revisar estacionariedad, estacionalidad, acf, pacf, valores faltantes, negativos,  huecos en el
+#   calendario, saltos raros, los 10 movimientod diarios mas grandes, summary descriptivo  (hasta alli)"
+# Adaptación [VERIFICAR] (asistente de IA, fecha): "Grafica la ACF y calcula Ljung-Box para los
+#   rezagos 5, 21 y 252, devolviendo la tabla de resultados."
+# Uso: Ljung-Box: H0 = no hay autocorrelación conjunta hasta el rezago indicado.
+# Referencias: [5], [7], [10]
 
 def graficar_acf_con_pvalores(ret, lags=40, rezagos_prueba=(5, 21, 252), etiqueta="r_t"):
     """Grafica ACF de r_t y calcula pruebas Ljung–Box para varios rezagos.
@@ -574,6 +656,12 @@ def graficar_acf_con_pvalores(ret, lags=40, rezagos_prueba=(5, 21, 252), etiquet
     resultados = pd.DataFrame(filas).set_index("serie").round(4)
     return fig, axes.ravel(), resultados
 
+# Base (Claude, 11-nov-2026): "ayudame con el codigo para graficar la serie cruda WTI,  luego
+#   revisar estacionariedad, estacionalidad, acf, pacf, valores faltantes, negativos,  huecos en el
+#   calendario, saltos raros, los 10 movimientod diarios mas grandes, summary descriptivo  (hasta alli)"
+# Adaptación [VERIFICAR] (asistente de IA, fecha): "Grafica la PACF y devuelve los coeficientes
+#   con un p-valor aproximado para cada rezago."
+# Referencias: [7], [10]
 
 def graficar_pacf_con_pvalores(ret, lags=40):
     """Grafica la PACF y devuelve sus coeficientes y p-valores aproximados.
@@ -625,6 +713,16 @@ def graficar_pacf_con_pvalores(ret, lags=40):
 
 
 
+
+# Base (Claude, 11-nov-2026): "ayudame con el codigo para graficar la serie cruda WTI,  luego
+#   revisar estacionariedad, estacionalidad, acf, pacf, valores faltantes, negativos,  huecos en el
+#   calendario, saltos raros, los 10 movimientod diarios mas grandes, summary descriptivo  (hasta alli)"
+# Adaptación [VERIFICAR] (asistente de IA, fecha): "Grafica la desviación estándar móvil con
+#   ventanas de 21 y 63 días."
+# Referencias: [10]
+
+
+
 def graficar_volatilidad_movil(ret, ventanas=(21, 63)):
     """Grafica desviación estándar móvil de una Serie o de columnas numéricas."""
     datos = ret.to_frame(name=ret.name or "serie") if isinstance(ret, pd.Series) else ret
@@ -647,6 +745,17 @@ def graficar_volatilidad_movil(ret, ventanas=(21, 63)):
     fig.tight_layout()
     plt.show()
     return fig, axes.ravel()
+
+
+# Prompt (Claude, 9-nov-2026): "Q opinas primero con la autocorrelavion voy a determinar si garch o
+#   arma y comparo con un random forest co. Rezagos?" (propuesta de la prueba ARCH-LM).
+# Implementación [VERIFICAR] (asistente de IA, fecha): "Aplica ARCH-LM a los residuos de la ecuación
+#   de media y devuelve una tabla por serie."
+# Uso: H0 = no hay efectos ARCH hasta el rezago indicado.
+# Referencias: [8], [10]
+
+
+
 
 
 def diagnostico_arch_lm(residuos_media, lags=10):
@@ -680,6 +789,12 @@ def diagnostico_arch_lm(residuos_media, lags=10):
             "lags": int(lags),
         })
     return pd.DataFrame(filas).set_index("serie").round(4)
+
+
+
+# Prompt [VERIFICAR] (asistente de IA, fecha): "Identifica observaciones con |z| mayor que un umbral, usando la media y la
+#   desviación de la serie de entrenamiento." [Revisar si se usa en la versión final.]
+
 
 
 def outliers_z(r, k=None):

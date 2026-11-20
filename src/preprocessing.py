@@ -1,39 +1,43 @@
-"""
-Módulo de preprocesamiento de datos financieros.
-
-Implementa un flujo reproducible de preparación de datos, independiente
-de los notebooks de análisis exploratorio y modelización.
-
-Ejecución
----------
-Desde el directorio raíz del proyecto:
-
-    python -m src.preprocessing
-
-Descripción
------------
-El módulo implementa las siguientes etapas del preprocesamiento:
-
-1. Carga de los datos financieros crudos.
-2. Eliminación de observaciones con valores nulos.
-3. Transformación de las series de precios a retornos logarítmicos
-   o primeras diferencias, según las transformaciones configuradas.
-4. Partición temporal de los datos en conjuntos de entrenamiento
-   (train), validación (val) y prueba (test).
-5. Verificación de la integridad de las particiones.
-6. Almacenamiento de los conjuntos procesados en formato CSV.
-
-Archivos generados
-------------------
-* precios_train.csv, precios_val.csv, precios_test.csv
-* retornos_train.csv, retornos_val.csv, retornos_test.csv
-* filas_eliminadas_por_nulos.csv
-
-Dependencias internas
----------------------
-* src.config: configuración de rutas, particiones y transformaciones.
-* src.load_clean: funciones de carga, limpieza y partición de datos.
-"""
+# =============================================================================
+# src/preprocessing.py
+# Módulo de preprocesamiento de datos financieros.
+#
+# Implementa un flujo reproducible de preparación de datos, independiente
+# de los notebooks de análisis exploratorio y modelización.
+#
+# Ejecución
+# ---------
+# Desde el directorio raíz del proyecto:
+#
+#     python -m src.preprocessing
+#
+# Descripción
+# -----------
+# El módulo implementa las siguientes etapas del preprocesamiento:
+#
+#   1. Carga de los datos financieros crudos.
+#   2. Eliminación de observaciones con valores nulos.
+#   3. Transformación de las series de precios a retornos logarítmicos
+#      o primeras diferencias, según las transformaciones configuradas.
+#   4. Partición temporal de los datos en conjuntos de entrenamiento
+#      (train), validación (val) y prueba (test).
+#   5. Verificación de la integridad de las particiones.
+#   6. Almacenamiento de los conjuntos procesados en formato CSV.
+#
+# Archivos generados
+# ------------------
+#   * precios_train.csv, precios_val.csv, precios_test.csv
+#   * retornos_train.csv, retornos_val.csv, retornos_test.csv
+#   * filas_eliminadas_por_nulos.csv
+#
+# Dependencias internas
+# ---------------------
+#   * src.config: configuración de rutas, particiones y transformaciones.
+#   * src.load_clean: funciones de carga, limpieza y partición de datos.
+#
+# Uso de asistentes de IA (requisito de la rúbrica):
+#   Partes de este código se generaron o adaptaron con ayuda de un asistente de IA: Claude
+# =============================================================================
 
 
 import numpy as np
@@ -41,6 +45,15 @@ import pandas as pd
 from . import config as cfg
 from . import load_clean 
 
+
+
+# Prompt (Claude, 13-nov-2026): "ayudame modificando esta funcion para que vaya tambien la
+#   transformacion de parkinson"
+# Prompt (Claude, 13-nov-2026): "no hay VIX, DXY, GOLD, ETC"
+# Prompt (Claude, 13-nov-2026): "multiplica por 100 por favor"
+# Uso: retorno logarítmico en % (100·ln(P_t/P_{t-1})) y estimador de Parkinson en %²
+#   ((100·ln(H_t/L_t))² / (4·ln 2)). Los precios <= 0 quedan en NaN.
+# Referencias: [1], [2], [3]
 
 def build_returns(precios, transf=None, parkinson=None, escala=100.0):
     """
@@ -103,6 +116,13 @@ def build_returns(precios, transf=None, parkinson=None, escala=100.0):
 
     return out.iloc[1:]
 
+# Prompt [RECONSTRUIDO] (asistente de IA, fecha): "Crea una función que ejecute todo el
+#   preprocesamiento: cargar los datos crudos, eliminar filas con nulos, calcular los
+#   retornos, dividir en train, validación y test, verificar las particiones y guardar
+#   los conjuntos en CSV."
+# Referencias: [3]
+
+
 def prepare_and_save(ruta_raw=None, destino=None):
     """
     Ejecuta el proceso de preparación de datos financieros y guarda los
@@ -151,6 +171,12 @@ def prepare_and_save(ruta_raw=None, destino=None):
 
     return {k: len(v) for k, v in ret_partes.items()} | {"filas_eliminadas": len(eliminadas)}
 
+
+
+# Prompt [RECONSTRUIDO] (asistente de IA, fecha): "Crea una función que cargue un conjunto
+#   procesado (precios o retornos) según la partición, y que bloquee la carga del test
+#   salvo que se habilite explícitamente, para no usarlo antes de la evaluación final."
+# Referencias: [3]
 
 def load_dataset(tipo, split, permitir_test=False, carpeta=None):
 

@@ -1,5 +1,23 @@
-################################################## DESCARGA DE DATOS #######################################################################
-# Este script se encarga de descargar los datos necesarios para el proyecto. Es necesaria la conexión a internet para poder ejecutar este script correctamente.
+# =============================================================================
+# src/download_data.py
+# Descarga de los datos del proyecto desde Yahoo Finance.
+#
+# Contenido:
+#   - Configuración: periodo de descarga (01-ene-2010 a 30-oct-2026; la fecha
+#     final de yfinance es exclusiva), ticker del futuro WTI (CL=F) y columnas
+#     que se guardan: cierre (WTI), máximo (WTI_High) y mínimo (WTI_Low).
+#   - download_prices(): descarga los precios diarios y extrae cierre, máximo y
+#     mínimo en un solo DataFrame indexado por fecha.
+#   - main(): si ya existe una descarga con todas las columnas, la lee y evita
+#     descargar de nuevo; si no, descarga, guarda el CSV en data/raw/ y un JSON
+#     de metadatos (fuente, fechas, filas y faltantes). Los datos se guardan sin
+#     imputar ni transformar.
+#   Requiere conexión a internet solo la primera vez.
+#
+# Uso de asistentes de IA (requisito de la rúbrica):
+#   Partes de este código se generaron o adaptaron con ayuda de un asistente de IA: Claude
+# =============================================================================
+
 
 from datetime import datetime
 from pathlib import Path
@@ -9,9 +27,13 @@ import pandas as pd
 import yfinance as yf
 
 
-# ============================================================
-# 1. CONFIGURACIÓN
-# ============================================================
+
+#   Prompt (Claude, 13-nov-2026): "estoy sacando solo las salidas al cierre de
+#   wti, como obtengo lo que me falta para la volatilidad?"
+#   Prompt (Claude, 13-nov-2026): "no, no deseo que modifique mi script para
+#   que no solo extraiga el archivo con la data de cierre, osea no quiero uno
+#   aparte" (incorporar máximo y mínimo en el mismo archivo).
+
 
 start_date = "2010-01-01"
 

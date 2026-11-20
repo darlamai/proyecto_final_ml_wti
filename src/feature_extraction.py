@@ -1,8 +1,34 @@
+# =============================================================================
+# src/feature_extraction.py
+# Extracción de características (feature extraction) para el Random Forest.
+#
+# Contenido:
+#   - construir_features: construye las variables predictoras por rezagos a partir de
+#     los retornos logarítmicos y del estimador de Parkinson, y la etiqueta (Parkinson
+#     del día τ). Cada fila τ usa solo información disponible hasta τ-1, por lo que no
+#     hay fuga de información. Con n_lags = 20 y ventanas de 5, 21 y 63 días se obtienen
+#     67 variables candidatas:
+#       · 20 rezagos de r², 20 de |r| y 20 del estimador de Parkinson
+#       · volatilidad móvil (desviación estándar de r) y promedio móvil de Parkinson
+#         en ventanas de 5, 21 y 63 días
+#       · el retorno del día anterior con signo (efecto apalancamiento)
+# Uso de asistentes de IA (requisito de la rúbrica):
+#   Partes de este código se generaron o adaptaron con ayuda de un asistente de IA: Claude
+# =============================================================================
+
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from src import feature_extraction as fe
 from src import config as cfg
+
+
+# Prompt (Claude, 14-nov-2026): "ayudame con el feature selection con Lags , yo tengo mi data
+#   asi , cual serian los rezagos , YA CONSTRUI PARKINSON, ENTRARIA EN FEATURE SELECTION?"
+# Prompt (Claude, 14-nov-2026): "ayudame con el còdigo para el feature extraction"
+# Uso: extracción clásica por rezagos; en el proyecto se llama con n_lags = 20.
+# Referencias: [1], [2], [3], [4], [5], [6]
 
 
 
