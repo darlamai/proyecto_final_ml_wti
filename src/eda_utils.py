@@ -369,7 +369,7 @@ def graficar_niveles_con_cortes(base, columnas=None, splits=None, mostrar_eda=Tr
 
     titulo = "Niveles: desarrollo (train + validación) | test final (sombreado rojo)"
     if eda_fin is not None:
-        titulo += f"\nlínea gris: fin del tramo de diagnóstico ({eda_fin.date()})"
+        titulo += f"\nlínea roja: fin del tramo de diagnóstico ({eda_fin.date()})"
     np.atleast_1d(axes)[0].set_title(titulo)
     plt.tight_layout(); plt.show()
 
